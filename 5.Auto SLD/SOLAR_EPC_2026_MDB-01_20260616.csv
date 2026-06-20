@@ -1,0 +1,17 @@
+﻿Feeder ID,Load Name,Type,Load (kW),Current (A),CB (AT),Adj,AdjTrip (A),CB (AF),Phase Cable,Ground Cable,Installation,Length (m),Volt Drop (%)
+MAIN INCOMER,Transformer Main,ACB 3P,600.00,866.03,1000,0.8,800.00,1000,"2(4x1C-240) sq.mm., CV","1C-50 sq.mm.,(G)","A: Ladder Closed",15,0.28
+Feeder 1,Solar Inverter 1,MCCB 3P,50,72.17,80,1,80.00,80,"4C-25 sq.mm., CV","1C-10 sq.mm.,(G)","A: Ladder Closed",50,1.45
+Feeder 2,Solar Inverter 2,MCCB 3P,150,216.51,250,1,250.00,250,"4x1C-120 sq.mm., CV","1C-25 sq.mm.,(G)","A: Ladder Closed",50,0.92
+Feeder 3,Load 3,MCCB 3P,150,216.51,250,1,250.00,250,"4x1C-120 sq.mm., CV","1C-25 sq.mm.,(G)","A: Ladder Closed",50,0.92
+Feeder 4,Load 4,MCCB 3P,150,216.51,250,1,250.00,250,"4x1C-120 sq.mm., CV","1C-25 sq.mm.,(G)","A: Ladder Closed",50,0.92
+Feeder 5,Load 5,MCCB 3P,150,216.51,250,1,250.00,250,"4x1C-120 sq.mm., CV","1C-25 sq.mm.,(G)","A: Ladder Closed",50,0.92
+
+
+RACEWAY CALCULATION
+Circuit Name,Raceway Type,Cable Configuration,Calculated Size,Recommended Raceway
+MAIN INCOMER,Tray/Ladder,"2(4x1C-240) sq.mm., CV + 1C-50 sq.mm.,(G)","259.2 mm (216.0+43.2)","Tray/Ladder 300 mm"
+Feeder 1,Tray/Ladder,"4C-25 sq.mm., CV + 1C-10 sq.mm.,(G)","31.2 mm (26.0+5.2)","Tray/Ladder 100 mm"
+Feeder 2,Tray/Ladder,"4x1C-120 sq.mm., CV + 1C-25 sq.mm.,(G)","93.6 mm (78.0+15.6)","Tray/Ladder 100 mm"
+Feeder 3,Tray/Ladder,"4x1C-120 sq.mm., CV + 1C-25 sq.mm.,(G)","93.6 mm (78.0+15.6)","Tray/Ladder 100 mm"
+Feeder 4,Tray/Ladder,"4x1C-120 sq.mm., CV + 1C-25 sq.mm.,(G)","93.6 mm (78.0+15.6)","Tray/Ladder 100 mm"
+Feeder 5,Tray/Ladder,"4x1C-120 sq.mm., CV + 1C-25 sq.mm.,(G)","93.6 mm (78.0+15.6)","Tray/Ladder 100 mm"

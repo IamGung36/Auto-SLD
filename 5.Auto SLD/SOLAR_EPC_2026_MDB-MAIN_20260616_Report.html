@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>SOLAR EPC 2026 - Design Report</title>
+        <style>
+            body { font-family: 'Sarabun', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; line-height: 1.6; padding: 20px; background: #f8fafc; }
+            .container { max-width: 1200px; margin: auto; background: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+            h1 { color: #0f172a; border-bottom: 3px solid #0ea5e9; padding-bottom: 10px; margin-bottom: 20px; }
+            h2 { color: #334155; margin-top: 30px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 30px; font-size: 13px; }
+            th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; vertical-align: top; }
+            th { background-color: #f1f5f9; color: #475569; font-weight: bold; text-transform: uppercase; font-size: 12px; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            .summary-box { background: #f0f9ff; padding: 20px; border-left: 4px solid #0ea5e9; margin-bottom: 30px; border-radius: 0 8px 8px 0; }
+            .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+            .text-sm { font-size: 11px; color: #64748b; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Electrical Design Report</h1>
+            <div class="summary-box">
+                <div class="grid-2">
+                    <div>
+                        <strong>Project Name:</strong> SOLAR EPC 2026 <br/>
+                        <strong>System Type:</strong> 3P 4W Full N (400V, PF: 1) <br/>
+                        <strong>Transformer:</strong> TR-01 (2,500 kVA) <br/>
+                    </div>
+                    <div>
+                        <strong>MDB ID:</strong> MDB-MAIN <br/>
+                        <strong>Short Circuit:</strong> All CB Ic >= 65 kA @400VAC <br/>
+                        <strong>Total Connected Load:</strong> 410.00 kW / 591.00 A<br/>
+                    </div>
+                </div>
+            </div>
+
+            <h2>Main Incomer Specification</h2>
+            <table>
+                <tr>
+                    <th>Equipment</th>
+                    <th>Breaker Spec</th>
+                    <th>Phase Cable</th>
+                    <th>Ground Cable</th>
+                    <th>Raceway / Routing</th>
+                    <th>%VD</th>
+                </tr>
+                <tr>
+                    <td><strong>Main Incomer</strong><br/><span class="text-sm">ACB 3P</span></td>
+                    <td>4000AT / 4000AF<br/><span class="text-sm">(Trip: 4000A)</span></td>
+                    <td>11(4x1C-300) sq.mm., CV</td>
+                    <td>1C-120 sq.mm.,(G)</td>
+                    <td><strong>2 x Tray/Ladder 1000 mm</strong><br/><span class="text-sm">A: Ladder Closed</span></td>
+                    <td>0.17%</td>
+                </tr>
+            </table>
+
+            <h2>Feeder Schedules</h2>
+            <table>
+                <tr>
+                    <th>Circuit / Load Name</th>
+                    <th>Load (kW)</th>
+                    <th>Current (A)</th>
+                    <th>Protection Device</th>
+                    <th>Cable Conductor</th>
+                    <th>Raceway</th>
+                    <th>%VD</th>
+                </tr>
+                <tr>
+                    <td><strong>Feeder 1</strong><br/><span class="text-sm">Solar Inverter 1</span></td>
+                    <td>50</td>
+                    <td>72</td>
+                    <td>MCCB 3P<br/>100AT / 100AF<br/><span class="text-sm">(Trip: 100A)</span></td>
+                    <td>4x1C-120 sq.mm., CV<br/><span style="color: #059669;">1C-10 sq.mm.,(G)</span></td>
+                    <td><strong>Tray/Ladder 100 mm</strong><br/><span class="text-sm">A: Ladder Closed</span></td>
+                    <td>0.38%</td>
+                </tr>
+                <tr>
+                    <td><strong>Feeder 2</strong><br/><span class="text-sm">Solar Inverter 2</span></td>
+                    <td>120</td>
+                    <td>173</td>
+                    <td>MCCB 3P<br/>250AT / 250AF<br/><span class="text-sm">(Trip: 250A)</span></td>
+                    <td>4x1C-120 sq.mm., CV<br/><span style="color: #059669;">1C-25 sq.mm.,(G)</span></td>
+                    <td><strong>Tray/Ladder 100 mm</strong><br/><span class="text-sm">A: Ladder Closed</span></td>
+                    <td>0.92%</td>
+                </tr>
+                <tr>
+                    <td><strong>Feeder 3</strong><br/><span class="text-sm">Solar Inverter 3</span></td>
+                    <td>120</td>
+                    <td>173</td>
+                    <td>MCCB 3P<br/>250AT / 250AF<br/><span class="text-sm">(Trip: 250A)</span></td>
+                    <td>4x1C-120 sq.mm., CV<br/><span style="color: #059669;">1C-25 sq.mm.,(G)</span></td>
+                    <td><strong>Tray/Ladder 100 mm</strong><br/><span class="text-sm">A: Ladder Closed</span></td>
+                    <td>0.92%</td>
+                </tr>
+                <tr>
+                    <td><strong>Feeder 4</strong><br/><span class="text-sm">Solar Inverter 4</span></td>
+                    <td>120</td>
+                    <td>173</td>
+                    <td>MCCB 3P<br/>250AT / 250AF<br/><span class="text-sm">(Trip: 250A)</span></td>
+                    <td>4x1C-120 sq.mm., CV<br/><span style="color: #059669;">1C-25 sq.mm.,(G)</span></td>
+                    <td><strong>3" IMC/EMT</strong><br/><span class="text-sm">E: Conduits UG</span></td>
+                    <td>0.92%</td>
+                </tr>
+            </table>
+            <p style="text-align: right; color: #94a3b8; font-size: 12px; margin-top: 50px;">
+                Generated by SLD STUDIO Pro - Solar Design Tool
+            </p>
+        </div>
+    </body>
+    </html>

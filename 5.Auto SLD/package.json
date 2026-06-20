@@ -1,0 +1,17 @@
+{
+  "name": "auto-sld-build",
+  "version": "1.0.0",
+  "description": "Compiler project for Auto SLD React application",
+  "main": "index.js",
+  "scripts": {
+    "build": "esbuild electricaldesignapp.tsx --bundle --minify --sourcemap --format=iife --global-name=AppBundle --outfile=bundle.js --external:react --external:react-dom"
+  },
+  "dependencies": {
+    "lucide-react": "^0.344.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.1"
+  }
+}
