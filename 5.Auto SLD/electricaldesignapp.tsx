@@ -443,118 +443,7 @@ const App = () => {
       { id: 6, title: "Feeder 6", type: "MCCB 3P", ataf: "250 AT / 250 AF", cable1: "4x1C-120 sq.mm., CV", cable2: "1C-25 sq.mm.,(G)", install: "A: Ladder Closed", loadKw: "150", loadA: "216.51", loadTitle: "Inverter 6", cal: {...initialCal, circType: 'Feeder', at: 250, af: 250, ampCable: 284, ground: "25"} },
     ]);
 
-  const [history, setHistory] = useState(() => {
-    const saved = localStorage.getItem('auto_sld_project_history');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  });
 
-  const lastSavedState = useRef(null);
-  const saveTimeout = useRef(null);
-
-  useEffect(() => {
-    const currentState = { feeders, globalSpecs, systemType, maxVd, globalPf, calVoltage, racewayGroups };
-    const currentStateStr = JSON.stringify(currentState);
-
-    if (lastSavedState.current === null) {
-      lastSavedState.current = currentStateStr;
-      return;
-    }
-
-    if (currentStateStr === lastSavedState.current) return;
-
-    if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(() => {
-      let label = "แก้ไขข้อมูล";
-      try {
-        const last = JSON.parse(lastSavedState.current);
-        if (last.feeders.length < feeders.length) label = "เพิ่ม Feeder";
-        else if (last.feeders.length > feeders.length) label = "ลบ Feeder";
-        else if (last.systemType !== systemType) label = `เปลี่ยนระบบเป็น ${systemType}`;
-        else if (last.maxVd !== maxVd) label = `เปลี่ยน Max VD เป็น ${maxVd}%`;
-        else if (last.globalPf !== globalPf) label = `เปลี่ยน PF เป็น ${globalPf}`;
-        else if (last.calVoltage !== calVoltage) label = `เปลี่ยนแรงดันเป็น ${calVoltage}V`;
-        else if (JSON.stringify(last.globalSpecs) !== JSON.stringify(globalSpecs)) {
-          if (last.globalSpecs.projectName !== globalSpecs.projectName) {
-            label = `เปลี่ยนชื่อโครงการเป็น ${globalSpecs.projectName}`;
-          } else {
-            label = "ปรับเปลี่ยนรายละเอียดโครงการ";
-          }
-        } else {
-          for (let i = 0; i < feeders.length; i++) {
-            if (JSON.stringify(last.feeders[i]) !== JSON.stringify(feeders[i])) {
-              label = `แก้ไขข้อมูล ${feeders[i].title}`;
-              break;
-            }
-          }
-        }
-      } catch (err) {}
-
-      const previousStateData = JSON.parse(lastSavedState.current);
-
-      setHistory(prev => {
-        const newEntry = {
-          id: Date.now(),
-          timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          date: new Date().toLocaleDateString('th-TH'),
-          label,
-          data: previousStateData
-        };
-        const updated = [newEntry, ...prev].slice(0, 30);
-        localStorage.setItem('auto_sld_project_history', JSON.stringify(updated));
-        return updated;
-      });
-
-      lastSavedState.current = currentStateStr;
-    }, 1500);
-
-    return () => {
-      if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    };
-  }, [feeders, globalSpecs, systemType, maxVd, globalPf, calVoltage, racewayGroups]);
-
-  const createBackup = (label = 'จุดสำรองข้อมูลแบบกำหนดเอง') => {
-    const currentState = { feeders, globalSpecs, systemType, maxVd, globalPf, calVoltage, racewayGroups };
-    const newEntry = {
-      id: Date.now(),
-      timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      date: new Date().toLocaleDateString('th-TH'),
-      label,
-      data: JSON.parse(JSON.stringify(currentState))
-    };
-    setHistory(prev => {
-      const updated = [newEntry, ...prev].slice(0, 30);
-      localStorage.setItem('auto_sld_project_history', JSON.stringify(updated));
-      return updated;
-    });
-    alert("สร้างจุดสำรองข้อมูลปัจจุบันเรียบร้อยแล้ว");
-  };
-
-  const restoreHistoryEntry = (entry) => {
-    if (entry && entry.data) {
-      if (entry.data.feeders) setFeeders(entry.data.feeders);
-      if (entry.data.globalSpecs) setGlobalSpecs(entry.data.globalSpecs);
-      if (entry.data.systemType) setSystemType(entry.data.systemType);
-      if (entry.data.maxVd) setMaxVd(entry.data.maxVd);
-      if (entry.data.globalPf) setGlobalPf(entry.data.globalPf);
-      if (entry.data.calVoltage) setCalVoltage(entry.data.calVoltage);
-      if (entry.data.racewayGroups) {
-        setRacewayGroups(entry.data.racewayGroups);
-      } else {
-        setRacewayGroups([
-          { id: 1, startNum: 1, endNum: 4 },
-          { id: 2, startNum: 5, endNum: 7 }
-        ]);
-      }
-      alert(`ดึงข้อมูลประวัติ "${entry.label}" กลับมาแล้ว`);
-    }
-  };
 
   const getGroupRacewaySize = (startNum, endNum) => {
     const startIdx = Math.min(startNum, endNum) - 1;
@@ -1753,11 +1642,10 @@ const App = () => {
           </div>
 
           <div className="flex bg-[#1e293b] border-b border-[#334155] flex-shrink-0 shadow-sm relative z-10 flex-wrap">
-            <button onClick={() => setActiveTab('global')} className={`flex-1 min-w-[20%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 ${activeTab === 'global' ? 'text-cyan-400 border-cyan-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}>Global</button>
-            <button onClick={() => setActiveTab('feeders')} className={`flex-1 min-w-[20%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'feeders' ? 'text-cyan-400 border-cyan-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}>Feeders <span className="bg-slate-700 text-white text-[9px] px-1.5 py-0.5 rounded-full">{feeders.length}</span></button>
-            <button onClick={() => setActiveTab('raceways')} className={`flex-1 min-w-[20%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'raceways' ? 'text-amber-400 border-amber-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}><Columns className="w-3.5 h-3.5"/> Raceways</button>
-            <button onClick={() => setActiveTab('database')} className={`flex-1 min-w-[20%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 ${activeTab === 'database' ? 'text-purple-400 border-purple-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}>DB</button>
-            <button onClick={() => setActiveTab('history')} className={`flex-1 min-w-[20%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1 ${activeTab === 'history' ? 'text-rose-400 border-rose-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}><History className="w-3.5 h-3.5"/> Backup</button>
+            <button onClick={() => setActiveTab('global')} className={`flex-1 min-w-[25%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 ${activeTab === 'global' ? 'text-cyan-400 border-cyan-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}>Global</button>
+            <button onClick={() => setActiveTab('feeders')} className={`flex-1 min-w-[25%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'feeders' ? 'text-cyan-400 border-cyan-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}>Feeders <span className="bg-slate-700 text-white text-[9px] px-1.5 py-0.5 rounded-full">{feeders.length}</span></button>
+            <button onClick={() => setActiveTab('raceways')} className={`flex-1 min-w-[25%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'raceways' ? 'text-amber-400 border-amber-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}><Columns className="w-3.5 h-3.5"/> Raceways</button>
+            <button onClick={() => setActiveTab('database')} className={`flex-1 min-w-[25%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 ${activeTab === 'database' ? 'text-purple-400 border-purple-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}>DB</button>
           </div>
 
           <div className="p-4 space-y-6 overflow-y-auto flex-1 bg-[#1e293b] custom-scrollbar">
@@ -1997,88 +1885,7 @@ const App = () => {
               </div>
             )}
 
-            {activeTab === 'history' && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-right duration-200">
-                <div className="bg-[#1a202c] rounded-xl p-4 border border-[#334155] shadow-lg flex flex-col gap-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-rose-400 uppercase tracking-widest flex items-center gap-2"><History className="w-4 h-4"/> Backup & History</h3>
-                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">ระบบสำรองข้อมูลเวอร์ชันก่อนหน้าอัตโนมัติทุกครั้งเมื่อมีการแก้ไข</p>
-                  </div>
-                  <button 
-                    onClick={() => createBackup('จุดสำรองข้อมูลแบบกำหนดเอง')} 
-                    className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] py-2 rounded-lg shadow-md transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Backup Current State
-                  </button>
-                </div>
 
-                <div className="space-y-2.5">
-                  <div className="flex justify-between items-center px-1">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">รายการสำรองข้อมูล ({history.length})</span>
-                    {history.length > 0 && (
-                      <button 
-                        onClick={() => {
-                          if (window.confirm("คุณต้องการลบประวัติการสำรองข้อมูลทั้งหมดใช่หรือไม่?")) {
-                            setHistory([]);
-                            localStorage.removeItem('auto_sld_project_history');
-                          }
-                        }}
-                        className="text-[10px] text-red-400 hover:text-red-300 font-bold hover:underline"
-                      >
-                        ล้างทั้งหมด
-                      </button>
-                    )}
-                  </div>
-                  
-                  {history.length === 0 ? (
-                    <div className="text-center py-8 text-slate-500 border border-dashed border-[#334155] rounded-xl bg-slate-800/10">
-                      <History className="w-8 h-8 mx-auto text-slate-600 mb-2 opacity-50" />
-                      <p className="text-[12px] font-bold">ยังไม่มีประวัติการสำรองข้อมูล</p>
-                      <p className="text-[10px] text-slate-600 mt-1">ข้อมูลจะถูกบันทึกอัตโนมัติเมื่อเกิดการแก้ไข</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
-                      {history.map((entry) => (
-                        <div key={entry.id} className="bg-[#1f2937]/50 border border-[#334155] rounded-xl p-3 flex flex-col gap-2 hover:border-slate-500 transition-all">
-                          <div className="min-w-0">
-                            <span className="text-[12px] font-bold text-slate-200 block break-words">{entry.label}</span>
-                            <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono mt-1">
-                              <span>{entry.date}</span>
-                              <span>•</span>
-                              <span className="text-slate-400">{entry.timestamp}</span>
-                              <span>•</span>
-                              <span className="text-cyan-500">{entry.data.feeders.length} Feeders</span>
-                            </div>
-                          </div>
-                          <div className="flex gap-1.5 w-full">
-                            <button 
-                              onClick={() => restoreHistoryEntry(entry)} 
-                              className="flex-1 bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 text-[10px] font-bold py-1.5 rounded-lg shadow-sm hover:bg-cyan-600 hover:text-white transition-all flex items-center justify-center gap-1"
-                            >
-                              <RefreshCw className="w-3 h-3" /> ดึงข้อมูลกลับ
-                            </button>
-                            <button 
-                              onClick={() => {
-                                if (window.confirm("ต้องการลบประวัติการสำรองนี้ใช่หรือไม่?")) {
-                                  setHistory(prev => {
-                                    const updated = prev.filter(h => h.id !== entry.id);
-                                    localStorage.setItem('auto_sld_project_history', JSON.stringify(updated));
-                                    return updated;
-                                  });
-                                }
-                              }}
-                              className="text-red-400 hover:text-red-300 px-2.5 py-1.5 border border-red-500/30 hover:bg-red-500/10 rounded-lg transition-all"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
