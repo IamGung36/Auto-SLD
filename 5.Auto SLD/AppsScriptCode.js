@@ -449,9 +449,118 @@ function doPost(e) {
       
       return responseJson({ success: true, message: "Database saved successfully" });
     }
+
+    if (action === "register") {
+      let sheet = ss.getSheetByName("Users");
+      if (!sheet) {
+        sheet = ss.insertSheet("Users");
+        sheet.appendRow(["Email", "Name", "PasswordHash", "Role", "CreatedAt", "LastLogin"]);
+        sheet.setFrozenRows(1);
+      }
+      
+      const email = String(postData.email || "").trim().toLowerCase();
+      const name = String(postData.name || "").trim();
+      const password = String(postData.password || "");
+      
+      if (!email || !name || !password) {
+        return responseJson({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
+      }
+      
+      // Check if email already exists
+      const data = sheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][0]).toLowerCase() === email) {
+          return responseJson({ success: false, error: "อีเมลนี้ถูกใช้งานแล้ว" });
+        }
+      }
+      
+      const passwordHash = hashPassword(password);
+      const role = "User"; // Default role when registering
+      const createdAt = new Date().toISOString();
+      
+      sheet.appendRow([email, name, passwordHash, role, createdAt, ""]);
+      
+      return responseJson({ success: true, message: "สมัครสมาชิกสำเร็จ!" });
+    }
+
+    if (action === "loginUser") {
+      let sheet = ss.getSheetByName("Users");
+      if (!sheet) {
+        // If Users sheet doesn't exist, create it and register an Admin user as a fallback
+        sheet = ss.insertSheet("Users");
+        sheet.appendRow(["Email", "Name", "PasswordHash", "Role", "CreatedAt", "LastLogin"]);
+        sheet.setFrozenRows(1);
+        
+        // Pre-populate admin account
+        const adminEmail = "admin@admin.com";
+        const adminName = "System Administrator";
+        const adminHash = hashPassword("admin123");
+        sheet.appendRow([adminEmail, adminName, adminHash, "Admin", new Date().toISOString(), ""]);
+      }
+      
+      const email = String(postData.email || "").trim().toLowerCase();
+      const password = String(postData.password || "");
+      
+      if (!email || !password) {
+        return responseJson({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
+      }
+      
+      const data = sheet.getDataRange().getValues();
+      let foundUser = null;
+      let userRowIndex = -1;
+      
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][0]).toLowerCase() === email) {
+          foundUser = {
+            email: data[i][0],
+            name: data[i][1],
+            passwordHash: data[i][2],
+            role: data[i][3] || "User"
+          };
+          userRowIndex = i + 1; // 1-indexed
+          break;
+        }
+      }
+      
+      if (!foundUser) {
+        return responseJson({ success: false, error: "ไม่พบบัญชีผู้ใช้งานนี้" });
+      }
+      
+      const passwordHash = hashPassword(password);
+      if (foundUser.passwordHash !== passwordHash) {
+        return responseJson({ success: false, error: "รหัสผ่านไม่ถูกต้อง" });
+      }
+      
+      // Update last login
+      const lastLogin = new Date().toISOString();
+      sheet.getRange(userRowIndex, 6).setValue(lastLogin); // LastLogin is column 6 (F)
+      
+      return responseJson({
+        success: true,
+        user: {
+          email: foundUser.email,
+          name: foundUser.name,
+          role: foundUser.role
+        }
+      });
+    }
     
     return responseJson({ success: false, error: "Unknown action" });
   } catch (error) {
     return responseJson({ success: false, error: error.toString() });
   }
+}
+
+// SHA-256 Hashing helper
+function hashPassword(password) {
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password, Utilities.Charset.UTF_8);
+  let hash = "";
+  for (let i = 0; i < digest.length; i++) {
+    let byteVal = digest[i];
+    if (byteVal < 0) byteVal += 256;
+    let byteString = byteVal.toString(16);
+    if (byteString.length == 1) byteString = "0" + byteString;
+    hash += byteString;
+  }
+  return hash;
 }

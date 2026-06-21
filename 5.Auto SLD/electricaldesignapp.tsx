@@ -306,20 +306,216 @@ const calculateRaceway = (cal, sysType, cableODData, conduitSizesArr, traySizesA
 };
 
 
-const SidebarTableRow = ({ id, label, value, onChange, type = "text", suffix = "", highlightedField, setHighlightedField, inputRef, disabled = false, list }) => (
-  <div className={`grid grid-cols-[100px_10px_1fr] items-center gap-2 border-b border-[#2d3748] last:border-0 py-2 px-3 transition-all duration-300 ${disabled ? 'opacity-30 pointer-events-none' : highlightedField === id ? 'bg-[#2a4365] -mx-1 shadow-inner border-l-4 border-l-cyan-400' : 'hover:bg-[#2d3748]'}`}>
-    <label className="text-[12px] font-semibold text-slate-300 tracking-wide">{label}</label>
-    <div className="text-slate-500 font-bold text-[12px] text-center">:</div>
-    <div className="flex items-center gap-2">
-      {type === "textarea" ? (
-        <textarea disabled={disabled} ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} onFocus={() => setHighlightedField(id)} className="w-full bg-transparent text-[#e2e8f0] font-mono text-[13px] border-none focus:ring-0 outline-none p-0 h-12 resize-none placeholder-slate-600" />
-      ) : (
-        <input disabled={disabled} ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} onFocus={() => setHighlightedField(id)} list={list} className="w-full bg-transparent text-[#e2e8f0] font-mono text-[13px] border-none focus:ring-0 outline-none p-0 placeholder-slate-600" />
-      )}
-      {suffix && <span className="text-[11px] text-cyan-500 font-bold">{suffix}</span>}
+const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMqzXYeC0s0o3uUc66Mr140-laUm57HDJoFLn6KAHG7FQaxtyUFFvISdmaxR_ctNAI/exec";
+
+const AuthWall = ({ handleLoginUser, handleRegisterUser }) => {
+  const [isLogin, setIsLogin] = React.useState(true);
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [name, setName] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [success, setSuccess] = React.useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!email.trim() || !password) {
+      setError('กรุณากรอกข้อมูลให้ครบถ้วน');
+      return;
+    }
+
+    if (!isLogin) {
+      if (!name.trim()) {
+        setError('กรุณากรอกชื่อผู้ใช้งาน');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError('รหัสผ่านไม่ตรงกัน');
+        return;
+      }
+      if (password.length < 6) {
+        setError('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
+        return;
+      }
+    }
+
+    setLoading(true);
+    try {
+      if (isLogin) {
+        const res = await handleLoginUser(email, password);
+        if (!res.success) {
+          setError(res.error || 'การเข้าสู่ระบบล้มเหลว');
+        }
+      } else {
+        const res = await handleRegisterUser(name, email, password);
+        if (res.success) {
+          setSuccess('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');
+          setIsLogin(true);
+          setPassword('');
+          setConfirmPassword('');
+        } else {
+          setError(res.error || 'การสมัครสมาชิกล้มเหลว');
+        }
+      }
+    } catch (e) {
+      setError(`เกิดข้อผิดพลาด: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 w-screen h-screen bg-[#070d19] flex items-center justify-center font-sarabun p-4 z-[9999] overflow-y-auto">
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div className="w-full max-w-[450px] bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-800 p-8 relative z-10 shrink-0 my-8">
+        <div className="flex flex-col items-center mb-6">
+          <div className="bg-gradient-to-br from-cyan-400 to-blue-600 p-3.5 rounded-xl shadow-lg mb-3">
+            <Layout className="w-8 h-8 text-white animate-pulse" />
+          </div>
+          <h1 className="text-2xl font-black text-white tracking-tight">SLD STUDIO Pro</h1>
+          <p className="text-[11px] text-cyan-400 mt-1 uppercase tracking-widest font-semibold flex items-center gap-1">
+            <Zap className="w-3.5 h-3.5" /> Solar Design Single Line Diagram
+          </p>
+        </div>
+
+        <div className="flex bg-slate-950/60 rounded-xl p-1 border border-slate-800/80 mb-6">
+          <button 
+            type="button" 
+            onClick={() => { setIsLogin(true); setError(''); setSuccess(''); }} 
+            className={`flex-1 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${isLogin ? 'bg-[#1e293b] text-cyan-400 border border-[#334155] shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            เข้าสู่ระบบ (Login)
+          </button>
+          <button 
+            type="button" 
+            onClick={() => { setIsLogin(false); setError(''); setSuccess(''); }} 
+            className={`flex-1 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${!isLogin ? 'bg-[#1e293b] text-cyan-400 border border-[#334155] shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            สมัครสมาชิก (Register)
+          </button>
+        </div>
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3.5 text-red-400 text-xs font-semibold flex items-start gap-2 mb-4 animate-in fade-in duration-200">
+            <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3.5 text-emerald-400 text-xs font-semibold flex items-start gap-2 mb-4 animate-in fade-in duration-200">
+            <Check className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{success}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {!isLogin && (
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-400 block tracking-wide">ชื่อผู้ใช้งาน (Name)</label>
+              <input 
+                type="text" 
+                placeholder="สมชาย แซ่ตั้ง" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={loading}
+                className="w-full bg-[#0a0f1d] text-slate-200 text-xs rounded-xl px-3.5 py-3 border border-slate-800 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors font-sarabun"
+              />
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-slate-400 block tracking-wide">อีเมล (Email)</label>
+            <input 
+              type="email" 
+              placeholder="example@domain.com" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+              className="w-full bg-[#0a0f1d] text-slate-200 text-xs rounded-xl px-3.5 py-3 border border-slate-800 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors font-sarabun"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-slate-400 block tracking-wide">รหัสผ่าน (Password)</label>
+            <input 
+              type="password" 
+              placeholder="••••••" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+              className="w-full bg-[#0a0f1d] text-slate-200 text-xs rounded-xl px-3.5 py-3 border border-slate-800 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors font-sarabun"
+            />
+          </div>
+
+          {!isLogin && (
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-400 block tracking-wide">ยืนยันรหัสผ่าน (Confirm Password)</label>
+              <input 
+                type="password" 
+                placeholder="••••••" 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={loading}
+                className="w-full bg-[#0a0f1d] text-slate-200 text-xs rounded-xl px-3.5 py-3 border border-slate-800 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors font-sarabun"
+              />
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full mt-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-600 text-white font-bold text-xs py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : isLogin ? (
+              <>
+                <Lock className="w-4 h-4" /> เข้าสู่ระบบ
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" /> สมัครสมาชิก
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="mt-6 border-t border-slate-800/80 pt-4 text-center">
+          <p className="text-[10px] text-slate-500 leading-relaxed">
+            เชื่อมต่อกับฐานข้อมูลระบบอัตโนมัติ<br/>
+            ระบบจะสร้างผู้ดูแลระบบ <span className="text-cyan-600 font-bold">admin@admin.com</span> (รหัสผ่าน: <span className="text-cyan-600 font-bold">admin123</span>) เป็นค่าเริ่มต้นหากติดตั้งชีทใหม่
+          </p>
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
+
+const SidebarTableRow = ({ id, label, value, onChange, type = "text", suffix = "", highlightedField, setHighlightedField, inputRef, disabled = false, list }) => {
+  const isRowDisabled = disabled || (typeof window !== 'undefined' && window.currentUserRole === 'Viewer');
+  return (
+    <div className={`grid grid-cols-[100px_10px_1fr] items-center gap-2 border-b border-[#2d3748] last:border-0 py-2 px-3 transition-all duration-300 ${isRowDisabled ? 'opacity-35 pointer-events-none' : highlightedField === id ? 'bg-[#2a4365] -mx-1 shadow-inner border-l-4 border-l-cyan-400' : 'hover:bg-[#2d3748]'}`}>
+      <label className="text-[12px] font-semibold text-slate-300 tracking-wide">{label}</label>
+      <div className="text-slate-500 font-bold text-[12px] text-center">:</div>
+      <div className="flex items-center gap-2">
+        {type === "textarea" ? (
+          <textarea disabled={isRowDisabled} ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} onFocus={() => setHighlightedField(id)} className="w-full bg-transparent text-[#e2e8f0] font-mono text-[13px] border-none focus:ring-0 outline-none p-0 h-12 resize-none placeholder-slate-600" />
+        ) : (
+          <input disabled={isRowDisabled} ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} onFocus={() => setHighlightedField(id)} list={list} className="w-full bg-transparent text-[#e2e8f0] font-mono text-[13px] border-none focus:ring-0 outline-none p-0 placeholder-slate-600" />
+        )}
+        {suffix && <span className="text-[11px] text-cyan-500 font-bold">{suffix}</span>}
+      </div>
+    </div>
+  );
+};
+
 
 const SectionHeader = ({ icon: Icon, title, colorClass, rightAction }) => (
   <div className={`flex items-center justify-between mb-0 p-2.5 bg-[#1a202c] border-b border-[#2d3748]`}>
@@ -652,16 +848,82 @@ const App = () => {
   const [isDbEditMode, setIsDbEditMode] = useState(false);
 
   const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem('auto_sld_sheet_url') || '');
-  const [appsScriptUrl, setAppsScriptUrl] = useState(() => localStorage.getItem('auto_sld_apps_script_url') || '');
+  const [appsScriptUrl, setAppsScriptUrl] = useState(() => localStorage.getItem('auto_sld_apps_script_url') || DEFAULT_APPS_SCRIPT_URL);
   const [isPulling, setIsPulling] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
   const [sheetStatus, setSheetStatus] = useState('disconnected');
   const [sheetError, setSheetError] = useState('');
   const [syncLogs, setSyncLogs] = useState<string[]>([]);
 
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('auto_sld_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  if (typeof window !== 'undefined') {
+    window.currentUserRole = currentUser ? currentUser.role : null;
+  }
+
   const logSync = (msg: string) => {
     const timestamp = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setSyncLogs(prev => [`[${timestamp}] ${msg}`, ...prev].slice(0, 30));
+  };
+
+  const handleLoginUser = async (email, password) => {
+    try {
+      const scriptUrl = appsScriptUrl || DEFAULT_APPS_SCRIPT_URL;
+      const res = await fetch(scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'loginUser',
+          email,
+          password
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.user) {
+        setCurrentUser(data.user);
+        localStorage.setItem('auto_sld_user', JSON.stringify(data.user));
+        logSync(`User logged in: ${data.user.name} (${data.user.role})`);
+        return { success: true };
+      } else {
+        return { success: false, error: data.error || 'การเข้าสู่ระบบล้มเหลว' };
+      }
+    } catch (e) {
+      return { success: false, error: `ข้อผิดพลาดการเชื่อมต่อ: ${e.message}` };
+    }
+  };
+
+  const handleRegisterUser = async (name, email, password) => {
+    try {
+      const scriptUrl = appsScriptUrl || DEFAULT_APPS_SCRIPT_URL;
+      const res = await fetch(scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'register',
+          name,
+          email,
+          password
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        logSync(`User registered: ${name}`);
+        return { success: true };
+      } else {
+        return { success: false, error: data.error || 'การสมัครสมาชิกล้มเหลว' };
+      }
+    } catch (e) {
+      return { success: false, error: `ข้อผิดพลาดการเชื่อมต่อ: ${e.message}` };
+    }
+  };
+
+  const handleLogoutUser = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('auto_sld_user');
+    logSync('ออกจากระบบแล้ว');
   };
 
   const feederWidth = 220;
@@ -1839,7 +2101,10 @@ const App = () => {
   const isMainAmpPass = mainAmpDerate >= mainAtAdjustVal;
   const mainVd = getCalculatedVd({ loadA: mainAmpV, cal: globalSpecs.mainCal }, systemType, calVoltage, globalPf, cableDB);
 
-  // Login protection screen bypassed
+  // Login protection screen
+  if (!currentUser) {
+    return <AuthWall handleLoginUser={handleLoginUser} handleRegisterUser={handleRegisterUser} />;
+  }
 
   return (
     <div className="flex h-screen bg-[#0f172a] text-slate-200 overflow-hidden selection:bg-cyan-500 selection:text-white font-sarabun relative">
@@ -1861,9 +2126,31 @@ const App = () => {
               <div>
                   <h1 className="text-xl font-black tracking-tight text-white leading-tight">SLD STUDIO Pro</h1>
                   <p className="text-[11px] text-cyan-400 mt-0.5 uppercase tracking-widest font-semibold flex items-center gap-1">
-                      <Zap className="w-3 h-3" /> Kang | Solar Design Eng.
+                      <Zap className="w-3.5 h-3.5 animate-pulse" /> Solar Design Studio
                   </p>
               </div>
+            </div>
+
+            {/* User Profile Section */}
+            <div className="flex items-center justify-between mt-4 bg-[#1e293b]/80 border border-[#334155]/60 rounded-xl px-3.5 py-2 relative z-10 backdrop-blur-sm shadow-md">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-sm border border-cyan-500/30 shadow-inner">
+                  {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <div>
+                  <div className="text-[12px] font-bold text-white truncate max-w-[150px] leading-tight">{currentUser.name}</div>
+                  <span className={`inline-block text-[9px] font-extrabold px-1.5 py-0.5 mt-0.5 rounded uppercase tracking-wider ${
+                    currentUser.role === 'Admin' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                    currentUser.role === 'Viewer' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                    'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                  }`}>
+                    {currentUser.role}
+                  </span>
+                </div>
+              </div>
+              <button onClick={handleLogoutUser} className="text-[10px] font-black text-slate-400 hover:text-red-400 transition-colors flex items-center gap-1">
+                <Lock className="w-3.5 h-3.5" /> LOG OUT
+              </button>
             </div>
             
             {/* Top Action Bar for Export/Import */}
@@ -2016,19 +2303,27 @@ const App = () => {
             
             {activeTab === 'feeders' && (
               <div className="space-y-5 animate-in fade-in slide-in-from-right duration-200">
-                <button onClick={addFeeder} className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl flex items-center justify-center gap-2 hover:from-cyan-500 hover:to-blue-500 font-bold text-[13px] shadow-lg shadow-cyan-900/50 transition-all border border-cyan-400/30">
-                  <Plus className="w-4 h-4" /> ADD FEEDER CIRCUIT
-                </button>
+                {currentUser.role !== 'Viewer' && (
+                  <button onClick={addFeeder} className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl flex items-center justify-center gap-2 hover:from-cyan-500 hover:to-blue-500 font-bold text-[13px] shadow-lg shadow-cyan-900/50 transition-all border border-cyan-400/30">
+                    <Plus className="w-4 h-4" /> ADD FEEDER CIRCUIT
+                  </button>
+                )}
                 
                 {feeders.map((f, idx) => (
                   <div key={f.id} className={`border rounded-xl overflow-hidden transition-all shadow-lg ${highlightedField?.startsWith(`f-${f.id}`) ? 'ring-2 ring-cyan-400 border-cyan-400 bg-[#1e293b]' : 'border-[#334155] bg-[#2d3748]/30'}`}>
                     <div className="bg-[#1a202c] px-4 py-2.5 border-b border-[#334155] flex justify-between items-center">
                       <span className="text-[12px] font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-cyan-500"></div> FEEDER {idx + 1}</span>
                       <div className="flex items-center gap-1.5">
-                        <button onClick={() => moveFeeder(idx, -1)} className="text-slate-400 hover:text-white hover:bg-slate-700 p-1 rounded-md transition-all"><ArrowUp className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => moveFeeder(idx, 1)} className="text-slate-400 hover:text-white hover:bg-slate-700 p-1 rounded-md transition-all mr-2"><ArrowDown className="w-3.5 h-3.5" /></button>
+                        {currentUser.role !== 'Viewer' && (
+                          <>
+                            <button onClick={() => moveFeeder(idx, -1)} className="text-slate-400 hover:text-white hover:bg-slate-700 p-1 rounded-md transition-all"><ArrowUp className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => moveFeeder(idx, 1)} className="text-slate-400 hover:text-white hover:bg-slate-700 p-1 rounded-md transition-all mr-2"><ArrowDown className="w-3.5 h-3.5" /></button>
+                          </>
+                        )}
                         <button onClick={() => openCalModal(f.id)} className="flex items-center gap-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[10px] font-bold px-2.5 py-1 rounded-md shadow-sm hover:bg-blue-600 hover:text-white transition-all"><Calculator className="w-3.5 h-3.5" /> CALC</button>
-                        <button onClick={() => removeFeeder(f.id)} className="text-red-400/70 hover:text-red-400 hover:bg-red-400/10 p-1.5 rounded-md transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                        {currentUser.role !== 'Viewer' && (
+                          <button onClick={() => removeFeeder(f.id)} className="text-red-400/70 hover:text-red-400 hover:bg-red-400/10 p-1.5 rounded-md transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                        )}
                       </div>
                     </div>
                     <div className="p-0">
@@ -2123,71 +2418,73 @@ const App = () => {
                    </button>
                 ))}
 
-                {/* Google Sheet Database Sync Setup */}
-                <div className="mt-6 border-t border-[#334155] pt-5 space-y-4">
-                  <h3 className="text-[11px] font-black text-slate-500 tracking-widest px-2 uppercase flex items-center gap-2">
-                    <Cloud className="w-3.5 h-3.5 text-cyan-400" /> Google Sheets Sync
-                  </h3>
-                  
-                  <div className="bg-[#1a202c]/50 rounded-xl p-3 border border-[#334155]/60 space-y-3 shadow-inner">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 block">Google Sheet URL</label>
-                      <input 
-                        type="text" 
-                        placeholder="https://docs.google.com/spreadsheets/d/.../edit" 
-                        value={sheetUrl}
-                        onChange={(e) => setSheetUrl(e.target.value)}
-                        className="w-full bg-[#0f172a] text-slate-200 text-[11px] rounded-lg px-2.5 py-1.5 border border-[#334155] focus:outline-none focus:border-cyan-500 transition-colors font-sarabun"
-                      />
-                    </div>
+                {/* Google Sheet Database Sync Setup - Admin Only */}
+                {currentUser.role === 'Admin' && (
+                  <div className="mt-6 border-t border-[#334155] pt-5 space-y-4">
+                    <h3 className="text-[11px] font-black text-slate-500 tracking-widest px-2 uppercase flex items-center gap-2">
+                      <Cloud className="w-3.5 h-3.5 text-cyan-400" /> Google Sheets Sync
+                    </h3>
                     
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 block">Apps Script URL (for Push/Write)</label>
-                      <input 
-                        type="text" 
-                        placeholder="https://script.google.com/macros/s/.../exec" 
-                        value={appsScriptUrl}
-                        onChange={(e) => setAppsScriptUrl(e.target.value)}
-                        className="w-full bg-[#0f172a] text-slate-200 text-[11px] rounded-lg px-2.5 py-1.5 border border-[#334155] focus:outline-none focus:border-cyan-500 transition-colors font-sarabun"
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handlePullDatabase(sheetUrl, appsScriptUrl)}
-                        disabled={isPulling}
-                        className="flex-1 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white font-bold text-[10px] py-2 rounded-lg shadow transition-all flex items-center justify-center gap-1"
-                      >
-                        <DownloadCloud className="w-3.5 h-3.5" /> {isPulling ? 'Pulling...' : 'Pull DB'}
-                      </button>
-                      <button 
-                        onClick={handlePushDatabase}
-                        disabled={isPushing}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold text-[10px] py-2 rounded-lg shadow transition-all flex items-center justify-center gap-1"
-                      >
-                        <UploadCloud className="w-3.5 h-3.5" /> {isPushing ? 'Pushing...' : 'Push DB'}
-                      </button>
-                    </div>
-
-                    {/* Status & Logs */}
-                    <div className="border-t border-[#334155] pt-2.5 mt-1 space-y-1.5">
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-slate-400">Connection Status:</span>
-                        <span className={`font-bold ${sheetStatus === 'connected' ? 'text-emerald-400' : sheetStatus === 'syncing' ? 'text-cyan-400' : sheetStatus === 'error' ? 'text-red-400' : 'text-slate-500'}`}>
-                          {sheetStatus === 'connected' ? 'CONNECTED' : sheetStatus === 'syncing' ? 'SYNCING' : sheetStatus === 'error' ? 'ERROR' : 'DISCONNECTED'}
-                        </span>
+                    <div className="bg-[#1a202c]/50 rounded-xl p-3 border border-[#334155]/60 space-y-3 shadow-inner">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">Google Sheet URL</label>
+                        <input 
+                          type="text" 
+                          placeholder="https://docs.google.com/spreadsheets/d/.../edit" 
+                          value={sheetUrl}
+                          onChange={(e) => setSheetUrl(e.target.value)}
+                          className="w-full bg-[#0f172a] text-slate-200 text-[11px] rounded-lg px-2.5 py-1.5 border border-[#334155] focus:outline-none focus:border-cyan-500 transition-colors font-sarabun"
+                        />
                       </div>
                       
-                      {syncLogs.length > 0 && (
-                        <div className="bg-[#0f172a] rounded p-2 text-[9px] font-mono text-cyan-400 max-h-[80px] overflow-y-auto custom-scrollbar leading-relaxed">
-                          {syncLogs.map((log, idx) => (
-                            <div key={idx}>{log}</div>
-                          ))}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">Apps Script URL (for Push/Write)</label>
+                        <input 
+                          type="text" 
+                          placeholder="https://script.google.com/macros/s/.../exec" 
+                          value={appsScriptUrl}
+                          onChange={(e) => setAppsScriptUrl(e.target.value)}
+                          className="w-full bg-[#0f172a] text-slate-200 text-[11px] rounded-lg px-2.5 py-1.5 border border-[#334155] focus:outline-none focus:border-cyan-500 transition-colors font-sarabun"
+                        />
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => handlePullDatabase(sheetUrl, appsScriptUrl)}
+                          disabled={isPulling}
+                          className="flex-1 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white font-bold text-[10px] py-2 rounded-lg shadow transition-all flex items-center justify-center gap-1"
+                        >
+                          <DownloadCloud className="w-3.5 h-3.5" /> {isPulling ? 'Pulling...' : 'Pull DB'}
+                        </button>
+                        <button 
+                          onClick={handlePushDatabase}
+                          disabled={isPushing}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold text-[10px] py-2 rounded-lg shadow transition-all flex items-center justify-center gap-1"
+                        >
+                          <UploadCloud className="w-3.5 h-3.5" /> {isPushing ? 'Pushing...' : 'Push DB'}
+                        </button>
+                      </div>
+
+                      {/* Status & Logs */}
+                      <div className="border-t border-[#334155] pt-2.5 mt-1 space-y-1.5">
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-slate-400">Connection Status:</span>
+                          <span className={`font-bold ${sheetStatus === 'connected' ? 'text-emerald-400' : sheetStatus === 'syncing' ? 'text-cyan-400' : sheetStatus === 'error' ? 'text-red-400' : 'text-slate-500'}`}>
+                            {sheetStatus === 'connected' ? 'CONNECTED' : sheetStatus === 'syncing' ? 'SYNCING' : sheetStatus === 'error' ? 'ERROR' : 'DISCONNECTED'}
+                          </span>
                         </div>
-                      )}
+                        
+                        {syncLogs.length > 0 && (
+                          <div className="bg-[#0f172a] rounded p-2 text-[9px] font-mono text-cyan-400 max-h-[80px] overflow-y-auto custom-scrollbar leading-relaxed">
+                            {syncLogs.map((log, idx) => (
+                              <div key={idx}>{log}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -2216,7 +2513,7 @@ const App = () => {
                   <p className="text-[13px] text-slate-400 mt-1">{activeTab === 'raceways' ? 'Auto calculated raceway dimensions for Main & Feeders based on EIT' : 'Manage electrical specifications & standards data'}</p>
                 </div>
               </div>
-              {activeTab === 'database' && (
+              {activeTab === 'database' && currentUser.role === 'Admin' && (
                 <button onClick={() => setIsDbEditMode(!isDbEditMode)} className={`flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-lg border transition-all shadow-md ${isDbEditMode ? 'bg-amber-500/20 text-amber-400 border-amber-500/50 hover:bg-amber-500/30' : 'bg-[#334155] text-slate-200 border-[#475569] hover:bg-[#475569]'}`}>
                   <Edit className="w-4 h-4" /> {isDbEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
                 </button>
@@ -3001,7 +3298,7 @@ const App = () => {
                 </div>
               </div>
               <div className="flex gap-4">
-                <button onClick={addFeeder} className="flex items-center gap-2 text-[12px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-900/30 px-4 py-2 rounded-lg border border-cyan-800/50 transition-all"><Plus className="w-4 h-4"/> ADD FEEDER</button>
+                {!isViewer && <button onClick={addFeeder} className="flex items-center gap-2 text-[12px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-900/30 px-4 py-2 rounded-lg border border-cyan-800/50 transition-all"><Plus className="w-4 h-4"/> ADD FEEDER</button>}
                 <button onClick={handleExportCSV} className="flex items-center gap-2 text-[12px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-900/30 px-4 py-2 rounded-lg border border-emerald-800/50 transition-all"><FileSpreadsheet className="w-4 h-4"/> EXCEL EXPORT</button>
                 <button onClick={() => setIsCalModalOpen(false)} className="text-slate-400 hover:text-white bg-[#0f172a] p-2 rounded-lg transition-colors border border-[#334155]"><X className="w-6 h-6" /></button>
               </div>
@@ -3013,8 +3310,8 @@ const App = () => {
                   <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-lg border border-slate-200 shadow-inner">
                     <span className="text-[12px] font-black text-slate-700 uppercase tracking-widest px-2"><Settings2 className="w-4 h-4 inline mr-1"/> System</span>
                     {['1P 2W', '3P 3W', '3P 4W Full N', 'DC System'].map(sys => (
-                      <label key={sys} className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-md transition-all ${systemType === sys ? 'bg-cyan-100 text-cyan-800 shadow-sm font-bold border border-cyan-200' : 'text-slate-600 hover:bg-slate-200'}`}>
-                        <input type="checkbox" checked={systemType === sys} onChange={() => handleSystemTypeChange(sys)} className="hidden" />
+                      <label key={sys} className={`flex items-center gap-2 ${isViewer ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} px-3 py-1.5 rounded-md transition-all ${systemType === sys ? 'bg-cyan-100 text-cyan-800 shadow-sm font-bold border border-cyan-200' : 'text-slate-600 hover:bg-slate-200'}`}>
+                        <input type="checkbox" checked={systemType === sys} onChange={() => !isViewer && handleSystemTypeChange(sys)} disabled={isViewer} className="hidden" />
                         <span className="text-[13px]">{sys}</span>
                       </label>
                     ))}
@@ -3024,15 +3321,15 @@ const App = () => {
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-300 shadow-sm">
                     <span className="text-[12px] font-bold text-slate-500 uppercase">Voltage (V):</span>
-                    <input type="number" value={calVoltage} onChange={(e) => handleCalVoltageChange(e.target.value)} className="w-20 bg-slate-50 border border-slate-300 rounded focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 px-2 py-1 text-center font-bold text-[14px] text-cyan-800 outline-none font-sarabun" />
+                    <input type="number" value={calVoltage} onChange={(e) => handleCalVoltageChange(e.target.value)} disabled={isViewer} className="w-20 bg-slate-50 border border-slate-300 rounded focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 px-2 py-1 text-center font-bold text-[14px] text-cyan-800 outline-none font-sarabun disabled:opacity-60" />
                   </div>
                   <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-300 shadow-sm">
                     <span className="text-[12px] font-bold text-slate-500 uppercase">PF:</span>
-                    <input type="number" step="0.01" value={globalPf} onChange={(e) => setGlobalPf(e.target.value)} className="w-16 bg-slate-50 border border-slate-300 rounded focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 px-2 py-1 text-center font-bold text-[14px] text-cyan-800 outline-none font-sarabun" disabled={systemType.includes('DC')} />
+                    <input type="number" step="0.01" value={globalPf} onChange={(e) => setGlobalPf(e.target.value)} className="w-16 bg-slate-50 border border-slate-300 rounded focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 px-2 py-1 text-center font-bold text-[14px] text-cyan-800 outline-none font-sarabun disabled:opacity-60" disabled={systemType.includes('DC') || isViewer} />
                   </div>
                   <div className="flex items-center gap-2 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200 shadow-sm">
                     <span className="text-[12px] font-bold text-amber-700 uppercase">Max VD (%):</span>
-                    <input type="number" step="0.1" value={maxVd} onChange={(e) => setMaxVd(e.target.value)} className="w-16 bg-white border border-amber-300 rounded focus:ring-1 focus:ring-amber-500 px-2 py-1 text-center font-bold text-[14px] text-amber-700 outline-none font-sarabun" />
+                    <input type="number" step="0.1" value={maxVd} onChange={(e) => setMaxVd(e.target.value)} disabled={isViewer} className="w-16 bg-white border border-amber-300 rounded focus:ring-1 focus:ring-amber-500 px-2 py-1 text-center font-bold text-[14px] text-amber-700 outline-none font-sarabun disabled:opacity-60" />
                   </div>
                 </div>
               </div>
@@ -3082,37 +3379,39 @@ const App = () => {
                             MAIN INCOMER
                           </td>
                           <td className={`py-2 px-2 border-r border-indigo-100 bg-indigo-100/50 ${getCellClass('main', 0, 'middle')}`}>
-                            <button onClick={handleAutoSizeMain} className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-1.5 rounded shadow-sm hover:from-amber-400 hover:to-orange-400 hover:scale-105 transition-all flex items-center gap-1 text-[10px] mx-auto font-bold" title="Auto Size Main">
-                              <Wand2 className="w-3.5 h-3.5"/> AUTO
-                            </button>
+                            {!isViewer && (
+                              <button onClick={handleAutoSizeMain} className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-1.5 rounded shadow-sm hover:from-amber-400 hover:to-orange-400 hover:scale-105 transition-all flex items-center gap-1 text-[10px] mx-auto font-bold" title="Auto Size Main">
+                                <Wand2 className="w-3.5 h-3.5"/> AUTO
+                              </button>
+                            )}
                           </td>
                           <td className={`py-2 px-2 w-[80px] bg-blue-50/30 text-slate-600 font-mono border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}>{mainKw.toFixed(1)}</td>
                           <td className={`py-2 px-2 text-slate-600 font-mono bg-blue-50/30 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}>{mainAmpV.toFixed(2)}</td>
-                          <td className={`py-2 px-2 w-[70px] bg-blue-50/30 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="number" step="0.1" value={globalSpecs.mainCal.factor} onChange={(e) => updateMainCalData('factor', e.target.value)} className={inputEngineeringStyle} /></td>
+                          <td className={`py-2 px-2 w-[70px] bg-blue-50/30 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="number" step="0.1" value={globalSpecs.mainCal.factor} onChange={(e) => updateMainCalData('factor', e.target.value)} disabled={isViewer} className={inputEngineeringStyle} /></td>
                           <td className={`py-2 px-2 text-indigo-700 font-bold bg-blue-100/40 font-mono border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}>{mainTotalA.toFixed(2)}</td>
-                          <td className={`py-2 px-2 w-[80px] bg-amber-50/30 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><select value={globalSpecs.mainCal.at} onChange={(e) => updateMainCalData('at', parseInt(e.target.value))} className={`${inputEngineeringStyle} border-amber-200 bg-amber-50 focus:border-amber-500 focus:ring-amber-500`}>{breakerOptions.map(sz => <option key={sz} value={sz}>{sz}</option>)}</select></td>
-                          <td className={`py-2 px-2 w-[70px] bg-amber-50/30 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="number" step="0.01" value={globalSpecs.mainCal.adjust} onChange={(e) => updateMainCalData('adjust', e.target.value)} className={`${inputEngineeringStyle} border-amber-200 bg-amber-50`} /></td>
+                          <td className={`py-2 px-2 w-[80px] bg-amber-50/30 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><select value={globalSpecs.mainCal.at} onChange={(e) => updateMainCalData('at', parseInt(e.target.value))} disabled={isViewer} className={`${inputEngineeringStyle} border-amber-200 bg-amber-50 focus:border-amber-500 focus:ring-amber-500`}>{breakerOptions.map(sz => <option key={sz} value={sz}>{sz}</option>)}</select></td>
+                          <td className={`py-2 px-2 w-[70px] bg-amber-50/30 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="number" step="0.01" value={globalSpecs.mainCal.adjust} onChange={(e) => updateMainCalData('adjust', e.target.value)} disabled={isViewer} className={`${inputEngineeringStyle} border-amber-200 bg-amber-50`} /></td>
                           <td className={`py-2 px-2 text-amber-700 font-bold bg-amber-100/50 font-mono border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}>{mainAtAdjustVal.toFixed(1)}</td>
-                          <td className={`py-2 px-2 w-[80px] border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><select value={globalSpecs.mainCal.af} onChange={(e) => updateMainCalData('af', parseInt(e.target.value))} className={inputEngineeringStyle}>{breakerOptions.map(sz => <option key={sz} value={sz}>{sz}</option>)}</select></td>
-                          <td className={`py-2 px-2 min-w-[150px] bg-indigo-50/50 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><select value={globalSpecs.mainCal.install} onChange={(e) => updateMainCalData('install', e.target.value)} className={`${inputEngineeringStyle} border-indigo-200`}>{installOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
-                          <td className={`py-2 px-2 w-[80px] border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="text" value={globalSpecs.mainCal.ref} onChange={(e) => updateMainCalData('ref', e.target.value)} className={inputEngineeringStyle} /></td>
-                          <td className={`py-2 px-2 w-[70px] bg-emerald-50/30 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><select value={globalSpecs.mainCal.cores} onChange={(e) => updateMainCalData('cores', e.target.value)} className={`${inputEngineeringStyle} bg-emerald-50 border-emerald-200`}>{['1C','2C','3C','4C'].map(c=><option key={c}>{c}</option>)}</select></td>
-                          <td className={`py-2 px-2 w-[80px] bg-emerald-50/30 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><select value={globalSpecs.mainCal.size} onChange={(e) => updateMainCalData('size', e.target.value)} className={`${inputEngineeringStyle} font-bold text-emerald-800 bg-emerald-50 border-emerald-300`}>{sizeOptions.map(sz => <option key={sz} value={sz}>{sz}</option>)}</select></td>
+                          <td className={`py-2 px-2 w-[80px] border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><select value={globalSpecs.mainCal.af} onChange={(e) => updateMainCalData('af', parseInt(e.target.value))} disabled={isViewer} className={inputEngineeringStyle}>{breakerOptions.map(sz => <option key={sz} value={sz}>{sz}</option>)}</select></td>
+                          <td className={`py-2 px-2 min-w-[150px] bg-indigo-50/50 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><select value={globalSpecs.mainCal.install} onChange={(e) => updateMainCalData('install', e.target.value)} disabled={isViewer} className={`${inputEngineeringStyle} border-indigo-200`}>{installOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
+                          <td className={`py-2 px-2 w-[80px] border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="text" value={globalSpecs.mainCal.ref} onChange={(e) => updateMainCalData('ref', e.target.value)} disabled={isViewer} className={inputEngineeringStyle} /></td>
+                          <td className={`py-2 px-2 w-[70px] bg-emerald-50/30 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><select value={globalSpecs.mainCal.cores} onChange={(e) => updateMainCalData('cores', e.target.value)} disabled={isViewer} className={`${inputEngineeringStyle} bg-emerald-50 border-emerald-200`}>{['1C','2C','3C','4C'].map(c=><option key={c}>{c}</option>)}</select></td>
+                          <td className={`py-2 px-2 w-[80px] bg-emerald-50/30 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><select value={globalSpecs.mainCal.size} onChange={(e) => updateMainCalData('size', e.target.value)} disabled={isViewer} className={`${inputEngineeringStyle} font-bold text-emerald-800 bg-emerald-50 border-emerald-300`}>{sizeOptions.map(sz => <option key={sz} value={sz}>{sz}</option>)}</select></td>
                           <td className={`py-2 px-2 text-emerald-800 font-bold bg-emerald-50/50 font-mono text-[13px] border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}>{globalSpecs.mainCal.ampCable}</td>
-                          <td className={`py-2 px-2 w-[60px] border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="number" step="0.1" value={globalSpecs.mainCal.ca} onChange={(e) => updateMainCalData('ca', e.target.value)} className={inputEngineeringStyle} /></td>
-                          <td className={`py-2 px-2 w-[60px] border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="number" step="0.1" value={globalSpecs.mainCal.cg} onChange={(e) => updateMainCalData('cg', e.target.value)} className={inputEngineeringStyle} /></td>
-                          <td className={`py-2 px-2 w-[60px] border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="number" value={globalSpecs.mainCal.set} onChange={(e) => updateMainCalData('set', e.target.value)} className={`${inputEngineeringStyle} border-indigo-400 bg-indigo-100 text-indigo-900 font-bold`} /></td>
+                          <td className={`py-2 px-2 w-[60px] border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="number" step="0.1" value={globalSpecs.mainCal.ca} onChange={(e) => updateMainCalData('ca', e.target.value)} disabled={isViewer} className={inputEngineeringStyle} /></td>
+                          <td className={`py-2 px-2 w-[60px] border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="number" step="0.1" value={globalSpecs.mainCal.cg} onChange={(e) => updateMainCalData('cg', e.target.value)} disabled={isViewer} className={inputEngineeringStyle} /></td>
+                          <td className={`py-2 px-2 w-[60px] border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="number" value={globalSpecs.mainCal.set} onChange={(e) => updateMainCalData('set', e.target.value)} disabled={isViewer} className={`${inputEngineeringStyle} border-indigo-400 bg-indigo-100 text-indigo-900 font-bold`} /></td>
                           <td className={`py-2 px-2 font-bold text-indigo-800 bg-indigo-100 font-mono border-r border-indigo-200 ${getCellClass('main', 0, 'middle')}`}>{mainAmpDerate.toFixed(1)}</td>
                           <td className={`py-2 px-2 bg-indigo-50 border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}>
                             <div className={`px-2 py-1 rounded shadow-sm text-[10px] font-black uppercase tracking-wider ${isMainAmpPass ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white animate-pulse'}`}>{isMainAmpPass ? 'OK' : 'FAIL'}</div>
                           </td>
-                          <td className={`py-2 px-2 w-[70px] border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="number" value={globalSpecs.mainCal.dist} onChange={(e) => updateMainCalData('dist', e.target.value)} className={inputEngineeringStyle} /></td>
+                          <td className={`py-2 px-2 w-[70px] border-r border-indigo-100 ${getCellClass('main', 0, 'middle')}`}><input type="number" value={globalSpecs.mainCal.dist} onChange={(e) => updateMainCalData('dist', e.target.value)} disabled={isViewer} className={inputEngineeringStyle} /></td>
                           <td className={`py-2 px-2 font-bold font-mono w-[70px] border-r border-indigo-100 ${mainVd > parseFloat(maxVd) ? 'text-red-600 bg-red-50 border-x border-red-200' : 'text-emerald-700 bg-emerald-50/50'} ${getCellClass('main', 0, 'middle')}`}>
                             {mainVd.toFixed(2)}
                           </td>
                           <td className={`py-2 px-2 w-[70px] relative ${getCellClass('main', 0, 'last')}`}>
-                            <input type="text" value={globalSpecs.mainCal.ground} onChange={(e) => updateMainCalData('ground', e.target.value)} className={inputEngineeringStyle} />
-                            {selectedRowId === 'main' && (
+                            <input type="text" value={globalSpecs.mainCal.ground} onChange={(e) => updateMainCalData('ground', e.target.value)} disabled={isViewer} className={inputEngineeringStyle} />
+                            {selectedRowId === 'main' && !isViewer && (
                               <div 
                                 onMouseDown={(e) => {
                                   e.stopPropagation();
@@ -3153,57 +3452,62 @@ const App = () => {
                                       type="text" 
                                       value={f.loadTitle} 
                                       onChange={(e) => updateFeeder(f.id, 'loadTitle', e.target.value)} 
+                                      disabled={isViewer}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setSelectedRowId(f.id);
                                       }}
-                                      className="bg-transparent hover:bg-slate-200/50 focus:bg-white border-0 border-b border-transparent focus:border-cyan-500 focus:ring-0 px-1 py-0.5 rounded text-[12px] font-bold text-slate-800 w-full outline-none transition-all" 
+                                      className="bg-transparent hover:bg-slate-200/50 focus:bg-white border-0 border-b border-transparent focus:border-cyan-500 focus:ring-0 px-1 py-0.5 rounded text-[12px] font-bold text-slate-800 w-full outline-none transition-all disabled:opacity-70" 
                                     />
                                   </div>
-                                  <button 
-                                    onClick={(e) => { 
-                                      e.stopPropagation(); 
-                                      removeFeeder(f.id); 
-                                    }} 
-                                    className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-all flex items-center justify-center shrink-0" 
-                                    title="Delete Feeder"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                                  {!isViewer && (
+                                    <button 
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        removeFeeder(f.id); 
+                                      }} 
+                                      className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-all flex items-center justify-center shrink-0" 
+                                      title="Delete Feeder"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                               <td className={`py-2 px-2 bg-purple-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}>
-                                <button onClick={() => handleAutoSize(f.id)} className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white p-1.5 rounded shadow-sm hover:from-purple-400 hover:to-indigo-400 hover:scale-105 transition-all flex items-center justify-center gap-1 text-[10px] mx-auto font-bold" title="Auto Size">
-                                  <Wand2 className="w-3.5 h-3.5"/> AUTO
-                                </button>
+                                {!isViewer && (
+                                  <button onClick={() => handleAutoSize(f.id)} className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white p-1.5 rounded shadow-sm hover:from-purple-400 hover:to-indigo-400 hover:scale-105 transition-all flex items-center justify-center gap-1 text-[10px] mx-auto font-bold" title="Auto Size">
+                                    <Wand2 className="w-3.5 h-3.5"/> AUTO
+                                  </button>
+                                )}
                               </td>
-                              <td className={`py-2 px-2 w-[80px] bg-blue-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" step="0.1" value={f.loadKw} onChange={(e) => updateFeeder(f.id, 'loadKw', e.target.value)} className={inputEngineeringStyle} /></td>
+                              <td className={`py-2 px-2 w-[80px] bg-blue-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" step="0.1" value={f.loadKw} onChange={(e) => updateFeeder(f.id, 'loadKw', e.target.value)} disabled={isViewer} className={inputEngineeringStyle} /></td>
                               <td className={`py-2 px-2 text-slate-600 font-mono bg-blue-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}>{ampV.toFixed(2)}</td>
-                              <td className={`py-2 px-2 w-[70px] bg-blue-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" step="0.1" value={f.cal.factor} onChange={(e) => updateCalData(f.id, 'factor', e.target.value)} className={inputEngineeringStyle} /></td>
+                              <td className={`py-2 px-2 w-[70px] bg-blue-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" step="0.1" value={f.cal.factor} onChange={(e) => updateCalData(f.id, 'factor', e.target.value)} disabled={isViewer} className={inputEngineeringStyle} /></td>
                               <td className={`py-2 px-2 text-cyan-700 font-bold bg-blue-100/40 font-mono ${getCellClass(f.id, rowIdx, 'middle')}`}>{totalA.toFixed(2)}</td>
-                              <td className={`py-2 px-2 w-[80px] bg-amber-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}><select value={f.cal.at} onChange={(e) => updateCalData(f.id, 'at', parseInt(e.target.value))} className={`${inputEngineeringStyle} border-amber-200 bg-amber-50 focus:border-amber-500 focus:ring-amber-500`}>{breakerOptions.map(sz => <option key={sz} value={sz}>{sz}</option>)}</select></td>
-                              <td className={`py-2 px-2 w-[70px] bg-amber-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" step="0.01" value={f.cal.adjust} onChange={(e) => updateCalData(f.id, 'adjust', e.target.value)} className={`${inputEngineeringStyle} border-amber-200 bg-amber-50`} /></td>
+                              <td className={`py-2 px-2 w-[80px] bg-amber-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}><select value={f.cal.at} onChange={(e) => updateCalData(f.id, 'at', parseInt(e.target.value))} disabled={isViewer} className={`${inputEngineeringStyle} border-amber-200 bg-amber-50 focus:border-amber-500 focus:ring-amber-500`}>{breakerOptions.map(sz => <option key={sz} value={sz}>{sz}</option>)}</select></td>
+                              <td className={`py-2 px-2 w-[70px] bg-amber-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" step="0.01" value={f.cal.adjust} onChange={(e) => updateCalData(f.id, 'adjust', e.target.value)} disabled={isViewer} className={`${inputEngineeringStyle} border-amber-200 bg-amber-50`} /></td>
                               <td className={`py-2 px-2 text-amber-700 font-bold bg-amber-100/50 font-mono ${getCellClass(f.id, rowIdx, 'middle')}`}>{(f.cal.at * adj).toFixed(1)}</td>
-                              <td className={`py-2 px-2 w-[80px] ${getCellClass(f.id, rowIdx, 'middle')}`}><select value={f.cal.af} onChange={(e) => updateCalData(f.id, 'af', parseInt(e.target.value))} className={inputEngineeringStyle}>{breakerOptions.map(sz => <option key={sz} value={sz}>{sz}</option>)}</select></td>
-                              <td className={`py-2 px-2 min-w-[150px] bg-slate-50 ${getCellClass(f.id, rowIdx, 'middle')}`}><select value={f.cal.install} onChange={(e) => updateCalData(f.id, 'install', e.target.value)} className={inputEngineeringStyle}>{installOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
-                              <td className={`py-2 px-2 w-[80px] ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="text" value={f.cal.ref} onChange={(e) => updateCalData(f.id, 'ref', e.target.value)} className={inputEngineeringStyle} /></td>
-                              <td className={`py-2 px-2 w-[70px] bg-emerald-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}><select value={f.cal.cores} onChange={(e) => updateCalData(f.id, 'cores', e.target.value)} className={`${inputEngineeringStyle} bg-emerald-50 border-emerald-200`}>{['1C','2C','3C','4C'].map(c=><option key={c}>{c}</option>)}</select></td>
-                              <td className={`py-2 px-2 w-[80px] bg-emerald-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}><select value={f.cal.size} onChange={(e) => updateCalData(f.id, 'size', e.target.value)} className={`${inputEngineeringStyle} font-bold text-emerald-800 bg-emerald-50 border-emerald-300`}>{sizeOptions.map(sz => <option key={sz} value={sz}>{sz}</option>)}</select></td>
+                              <td className={`py-2 px-2 w-[80px] ${getCellClass(f.id, rowIdx, 'middle')}`}><select value={f.cal.af} onChange={(e) => updateCalData(f.id, 'af', parseInt(e.target.value))} disabled={isViewer} className={inputEngineeringStyle}>{breakerOptions.map(sz => <option key={sz} value={sz}>{sz}</option>)}</select></td>
+                              <td className={`py-2 px-2 min-w-[150px] bg-slate-50 ${getCellClass(f.id, rowIdx, 'middle')}`}><select value={f.cal.install} onChange={(e) => updateCalData(f.id, 'install', e.target.value)} disabled={isViewer} className={inputEngineeringStyle}>{installOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
+                              <td className={`py-2 px-2 w-[80px] ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="text" value={f.cal.ref} onChange={(e) => updateCalData(f.id, 'ref', e.target.value)} disabled={isViewer} className={inputEngineeringStyle} /></td>
+                              <td className={`py-2 px-2 w-[70px] bg-emerald-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}><select value={f.cal.cores} onChange={(e) => updateCalData(f.id, 'cores', e.target.value)} disabled={isViewer} className={`${inputEngineeringStyle} bg-emerald-50 border-emerald-200`}>{['1C','2C','3C','4C'].map(c=><option key={c}>{c}</option>)}</select></td>
+                              <td className={`py-2 px-2 w-[80px] bg-emerald-50/30 ${getCellClass(f.id, rowIdx, 'middle')}`}><select value={f.cal.size} onChange={(e) => updateCalData(f.id, 'size', e.target.value)} disabled={isViewer} className={`${inputEngineeringStyle} font-bold text-emerald-800 bg-emerald-50 border-emerald-300`}>{sizeOptions.map(sz => <option key={sz} value={sz}>{sz}</option>)}</select></td>
                               <td className={`py-2 px-2 text-emerald-800 font-bold bg-emerald-50/50 font-mono text-[13px] ${getCellClass(f.id, rowIdx, 'middle')}`}>{f.cal.ampCable}</td>
-                              <td className={`py-2 px-2 w-[60px] ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" step="0.1" value={f.cal.ca} onChange={(e) => updateCalData(f.id, 'ca', e.target.value)} className={inputEngineeringStyle} /></td>
-                              <td className={`py-2 px-2 w-[60px] ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" step="0.1" value={f.cal.cg} onChange={(e) => updateCalData(f.id, 'cg', e.target.value)} className={inputEngineeringStyle} /></td>
-                              <td className={`py-2 px-2 w-[60px] ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" value={f.cal.set} onChange={(e) => updateCalData(f.id, 'set', e.target.value)} className={`${inputEngineeringStyle} border-purple-300 bg-purple-50 text-purple-800 font-bold`} /></td>
+                              <td className={`py-2 px-2 w-[60px] ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" step="0.1" value={f.cal.ca} onChange={(e) => updateCalData(f.id, 'ca', e.target.value)} disabled={isViewer} className={inputEngineeringStyle} /></td>
+                              <td className={`py-2 px-2 w-[60px] ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" step="0.1" value={f.cal.cg} onChange={(e) => updateCalData(f.id, 'cg', e.target.value)} disabled={isViewer} className={inputEngineeringStyle} /></td>
+                              <td className={`py-2 px-2 w-[60px] ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" value={f.cal.set} onChange={(e) => updateCalData(f.id, 'set', e.target.value)} disabled={isViewer} className={`${inputEngineeringStyle} border-purple-300 bg-purple-50 text-purple-800 font-bold`} /></td>
                               <td className={`py-2 px-2 font-bold text-cyan-800 bg-slate-100 font-mono ${getCellClass(f.id, rowIdx, 'middle')}`}>{ampDerate.toFixed(1)}</td>
                               <td className={`py-2 px-2 bg-slate-50 ${getCellClass(f.id, rowIdx, 'middle')}`}>
                                 <div className={`px-2 py-1 rounded shadow-sm text-[10px] font-black uppercase tracking-wider ${isAmpPass ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white animate-pulse'}`}>{isAmpPass ? 'OK' : 'FAIL'}</div>
                               </td>
-                              <td className={`py-2 px-2 w-[70px] ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" value={f.cal.dist} onChange={(e) => updateCalData(f.id, 'dist', e.target.value)} className={inputEngineeringStyle} /></td>
+                              <td className={`py-2 px-2 w-[70px] ${getCellClass(f.id, rowIdx, 'middle')}`}><input type="number" value={f.cal.dist} onChange={(e) => updateCalData(f.id, 'dist', e.target.value)} disabled={isViewer} className={inputEngineeringStyle} /></td>
                               <td className={`py-2 px-2 font-bold font-mono w-[70px] ${calcVd > vdLimit ? 'text-red-600 bg-red-50 border-x border-red-200' : 'text-emerald-700 bg-emerald-50/50'} ${getCellClass(f.id, rowIdx, 'middle')}`}>
                                 {calcVd.toFixed(2)}
                               </td>
                               <td className={`py-2 px-2 w-[70px] relative ${getCellClass(f.id, rowIdx, 'last')}`}>
-                                <input type="text" value={f.cal.ground} onChange={(e) => updateCalData(f.id, 'ground', e.target.value)} className={inputEngineeringStyle} />
-                                {selectedRowId === f.id && (
+                                <input type="text" value={f.cal.ground} onChange={(e) => updateCalData(f.id, 'ground', e.target.value)} disabled={isViewer} className={inputEngineeringStyle} />
+                                {selectedRowId === f.id && !isViewer && (
                                   <div 
                                     onMouseDown={(e) => {
                                       e.stopPropagation();

@@ -1,0 +1,7 @@
+node_modules/
+backups/
+bundle.js
+bundle.js.map
+.tempmediaStorage
+.gemini/
+.agents/
