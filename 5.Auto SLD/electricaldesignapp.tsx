@@ -651,6 +651,19 @@ const App = () => {
   const [dbCoreType, setDbCoreType] = useState('1C');
   const [isDbEditMode, setIsDbEditMode] = useState(false);
 
+  const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem('auto_sld_sheet_url') || '');
+  const [appsScriptUrl, setAppsScriptUrl] = useState(() => localStorage.getItem('auto_sld_apps_script_url') || '');
+  const [isPulling, setIsPulling] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
+  const [sheetStatus, setSheetStatus] = useState('disconnected');
+  const [sheetError, setSheetError] = useState('');
+  const [syncLogs, setSyncLogs] = useState<string[]>([]);
+
+  const logSync = (msg: string) => {
+    const timestamp = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setSyncLogs(prev => [`[${timestamp}] ${msg}`, ...prev].slice(0, 30));
+  };
+
   const feederWidth = 220;
   const svgWidth = Math.max(900, (renderItems.length * feederWidth) + 300);
   const centerX = svgWidth / 2;
@@ -674,6 +687,233 @@ const App = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [svgWidth, isSidebarOpen, activeTab]);
+
+  const getSheetIdFromUrl = (url: string) => {
+    const matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    return matches ? matches[1] : url;
+  };
+
+  const handlePullDatabase = async (customSheetUrl = sheetUrl, customScriptUrl = appsScriptUrl) => {
+    setIsPulling(true);
+    setSheetStatus('syncing');
+    setSheetError('');
+    logSync('เริ่มต้นซิงค์ข้อมูล...');
+    
+    localStorage.setItem('auto_sld_sheet_url', customSheetUrl || '');
+    localStorage.setItem('auto_sld_apps_script_url', customScriptUrl || '');
+    
+    try {
+      if (customScriptUrl && customScriptUrl.trim() !== '') {
+        logSync('กำลังดึงข้อมูลจาก Google Apps Script Web App...');
+        const separator = customScriptUrl.includes('?') ? '&' : '?';
+        const res = await fetch(`${customScriptUrl}${separator}action=pullDb`);
+        const data = await res.json();
+        
+        if (data.success && data.db) {
+          const { cables, ampacity, cableOD, conduitSizes: cSizes, traySizes: tSizes } = data.db;
+          if (cables) setCableDB(cables);
+          if (ampacity) setAmpacityDB(ampacity);
+          if (cableOD) setCableOD(cableOD);
+          if (cSizes && cSizes.length > 0) setConduitSizes(cSizes);
+          if (tSizes && tSizes.length > 0) setTraySizes(tSizes);
+          
+          setSheetStatus('connected');
+          logSync('ซิงค์ตารางฐานข้อมูลผ่าน Web App สำเร็จ!');
+        } else {
+          throw new Error(data.error || 'โครงสร้างข้อมูลไม่ถูกต้อง');
+        }
+      } else if (customSheetUrl && customSheetUrl.trim() !== '') {
+        const sheetId = getSheetIdFromUrl(customSheetUrl);
+        logSync(`กำลังดึงข้อมูลตารางสาธารณะ (ID: ${sheetId})...`);
+        
+        const fetchCSV = async (sheetName: string) => {
+          const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`ไม่พบชีท "${sheetName}" หรือไม่ได้ตั้งค่าแชร์ลิงก์แบบผู้มีสิทธิ์อ่าน`);
+          return await res.text();
+        };
+
+        const parseCSV = (text: string) => {
+          const lines = text.split('\n');
+          return lines.map(line => {
+            const parts = [];
+            let inQuotes = false;
+            let current = '';
+            for (let i = 0; i < line.length; i++) {
+              const char = line[i];
+              if (char === '"') {
+                inQuotes = !inQuotes;
+              } else if (char === ',' && !inQuotes) {
+                parts.push(current.trim());
+                current = '';
+              } else {
+                current += char;
+              }
+            }
+            parts.push(current.trim());
+            return parts.map(p => p.replace(/^"|"$/g, ''));
+          });
+        };
+        
+        logSync('กำลังโหลดชีท Cables...');
+        const cablesCsv = await fetchCSV('Cables');
+        logSync('กำลังโหลดชีท Ampacity...');
+        const ampacityCsv = await fetchCSV('Ampacity');
+        logSync('กำลังโหลดชีท CableOD...');
+        const odCsv = await fetchCSV('CableOD');
+        logSync('กำลังโหลดชีท Conduits...');
+        const conduitCsv = await fetchCSV('Conduits');
+        logSync('กำลังโหลดชีท Trays...');
+        const trayCsv = await fetchCSV('Trays');
+
+        logSync('กำลังนำเข้าข้อมูล...');
+        
+        // 1. Cables
+        const cablesRows = parseCSV(cablesCsv);
+        const cablesTemp: any = {};
+        for (let i = 1; i < cablesRows.length; i++) {
+          const row = cablesRows[i];
+          if (row.length >= 4) {
+            const type = row[0];
+            const size = row[1];
+            const r = row[2];
+            const x = row[3];
+            if (type && size) {
+              if (!cablesTemp[type]) cablesTemp[type] = [];
+              cablesTemp[type].push({ size, r, x });
+            }
+          }
+        }
+        if (Object.keys(cablesTemp).length > 0) setCableDB(cablesTemp);
+
+        // 2. Ampacity
+        const ampacityRows = parseCSV(ampacityCsv);
+        const ampacityTemp: any = {};
+        for (let i = 1; i < ampacityRows.length; i++) {
+          const row = ampacityRows[i];
+          if (row.length >= 5) {
+            const type = row[0];
+            const install = row[1];
+            const cores = row[2];
+            const size = row[3];
+            const amp = Number(row[4]);
+            if (type && install && cores && size) {
+              if (!ampacityTemp[type]) ampacityTemp[type] = {};
+              if (!ampacityTemp[type][install]) ampacityTemp[type][install] = {};
+              if (!ampacityTemp[type][install][cores]) ampacityTemp[type][install][cores] = {};
+              ampacityTemp[type][install][cores][size] = amp;
+            }
+          }
+        }
+        if (Object.keys(ampacityTemp).length > 0) setAmpacityDB(ampacityTemp);
+
+        // 3. CableOD
+        const odRows = parseCSV(odCsv);
+        const odTemp: any = {};
+        for (let i = 1; i < odRows.length; i++) {
+          const row = odRows[i];
+          if (row.length >= 3) {
+            const size = row[0];
+            const cores = row[1];
+            const od = Number(row[2]);
+            if (size && cores) {
+              if (!odTemp[size]) odTemp[size] = {};
+              odTemp[size][cores] = od;
+            }
+          }
+        }
+        if (Object.keys(odTemp).length > 0) setCableOD(odTemp);
+
+        // 4. Conduits
+        const conduitRows = parseCSV(conduitCsv);
+        const conduitsTemp = [];
+        for (let i = 1; i < conduitRows.length; i++) {
+          const row = conduitRows[i];
+          if (row.length >= 3) {
+            const size = row[0];
+            const id = Number(row[1]);
+            const area40 = Number(row[2]);
+            if (size && !isNaN(id)) {
+              conduitsTemp.push({ size, id, area40 });
+            }
+          }
+        }
+        if (conduitsTemp.length > 0) setConduitSizes(conduitsTemp);
+
+        // 5. Trays
+        const trayRows = parseCSV(trayCsv);
+        const traysTemp = [];
+        for (let i = 1; i < trayRows.length; i++) {
+          const row = trayRows[i];
+          if (row.length >= 1) {
+            const size = Number(row[0]);
+            if (!isNaN(size)) traysTemp.push(size);
+          }
+        }
+        if (traysTemp.length > 0) setTraySizes(traysTemp);
+
+        setSheetStatus('connected');
+        logSync('ดาวน์โหลดและประมวลผลตารางฐานข้อมูลสาธารณะสำเร็จ!');
+      } else {
+        throw new Error('กรุณาระบุ URL Google Sheet หรือ Apps Script ในส่วนตั้งค่าก่อน');
+      }
+    } catch (e: any) {
+      setSheetStatus('error');
+      setSheetError(e.message);
+      logSync(`Sync Error: ${e.message}`);
+      alert(`การเชื่อมต่อล้มเหลว: ${e.message}`);
+    } finally {
+      setIsPulling(false);
+    }
+  };
+
+  const handlePushDatabase = async () => {
+    if (!appsScriptUrl || appsScriptUrl.trim() === '') {
+      alert("กรุณาระบุ URL Google Apps Script Web App ในส่วนตั้งค่าเชื่อมต่อก่อน!");
+      return;
+    }
+    
+    setIsPushing(true);
+    logSync('กำลังส่งฐานข้อมูลปัจจุบันไปยัง Google Sheet...');
+    
+    try {
+      const dbData = {
+        cables: cableDB,
+        ampacity: ampacityDB,
+        cableOD: cableOD,
+        conduitSizes: conduitSizes,
+        traySizes: traySizes
+      };
+      
+      const res = await fetch(appsScriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'saveDb',
+          db: dbData
+        })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        logSync('อัปเดตฐานข้อมูลบน Google Sheet สำเร็จแล้ว!');
+        alert('อัปเดตฐานข้อมูลบน Google Sheet เรียบร้อยแล้ว!');
+      } else {
+        throw new Error(data.error || 'เกิดข้อผิดพลาดในการเขียนข้อมูลลงชีต');
+      }
+    } catch (e: any) {
+      logSync(`Push Error: ${e.message}`);
+      alert(`บันทึกไม่สำเร็จ: ${e.message}`);
+    } finally {
+      setIsPushing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (sheetUrl || appsScriptUrl) {
+      handlePullDatabase(sheetUrl, appsScriptUrl);
+    }
+  }, []);
 
 
   // --- File Management & Export Methods ---
@@ -1882,6 +2122,72 @@ const App = () => {
                       {item}
                    </button>
                 ))}
+
+                {/* Google Sheet Database Sync Setup */}
+                <div className="mt-6 border-t border-[#334155] pt-5 space-y-4">
+                  <h3 className="text-[11px] font-black text-slate-500 tracking-widest px-2 uppercase flex items-center gap-2">
+                    <Cloud className="w-3.5 h-3.5 text-cyan-400" /> Google Sheets Sync
+                  </h3>
+                  
+                  <div className="bg-[#1a202c]/50 rounded-xl p-3 border border-[#334155]/60 space-y-3 shadow-inner">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 block">Google Sheet URL</label>
+                      <input 
+                        type="text" 
+                        placeholder="https://docs.google.com/spreadsheets/d/.../edit" 
+                        value={sheetUrl}
+                        onChange={(e) => setSheetUrl(e.target.value)}
+                        className="w-full bg-[#0f172a] text-slate-200 text-[11px] rounded-lg px-2.5 py-1.5 border border-[#334155] focus:outline-none focus:border-cyan-500 transition-colors font-sarabun"
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 block">Apps Script URL (for Push/Write)</label>
+                      <input 
+                        type="text" 
+                        placeholder="https://script.google.com/macros/s/.../exec" 
+                        value={appsScriptUrl}
+                        onChange={(e) => setAppsScriptUrl(e.target.value)}
+                        className="w-full bg-[#0f172a] text-slate-200 text-[11px] rounded-lg px-2.5 py-1.5 border border-[#334155] focus:outline-none focus:border-cyan-500 transition-colors font-sarabun"
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handlePullDatabase(sheetUrl, appsScriptUrl)}
+                        disabled={isPulling}
+                        className="flex-1 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white font-bold text-[10px] py-2 rounded-lg shadow transition-all flex items-center justify-center gap-1"
+                      >
+                        <DownloadCloud className="w-3.5 h-3.5" /> {isPulling ? 'Pulling...' : 'Pull DB'}
+                      </button>
+                      <button 
+                        onClick={handlePushDatabase}
+                        disabled={isPushing}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold text-[10px] py-2 rounded-lg shadow transition-all flex items-center justify-center gap-1"
+                      >
+                        <UploadCloud className="w-3.5 h-3.5" /> {isPushing ? 'Pushing...' : 'Push DB'}
+                      </button>
+                    </div>
+
+                    {/* Status & Logs */}
+                    <div className="border-t border-[#334155] pt-2.5 mt-1 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-slate-400">Connection Status:</span>
+                        <span className={`font-bold ${sheetStatus === 'connected' ? 'text-emerald-400' : sheetStatus === 'syncing' ? 'text-cyan-400' : sheetStatus === 'error' ? 'text-red-400' : 'text-slate-500'}`}>
+                          {sheetStatus === 'connected' ? 'CONNECTED' : sheetStatus === 'syncing' ? 'SYNCING' : sheetStatus === 'error' ? 'ERROR' : 'DISCONNECTED'}
+                        </span>
+                      </div>
+                      
+                      {syncLogs.length > 0 && (
+                        <div className="bg-[#0f172a] rounded p-2 text-[9px] font-mono text-cyan-400 max-h-[80px] overflow-y-auto custom-scrollbar leading-relaxed">
+                          {syncLogs.map((log, idx) => (
+                            <div key={idx}>{log}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

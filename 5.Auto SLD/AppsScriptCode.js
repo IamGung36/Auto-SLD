@@ -168,6 +168,14 @@ function doGet(e) {
       return responseJson(projects);
     }
     
+    // Ensure 'Data base' sheet exists
+    let dbSheet = ss.getSheetByName("Data base");
+    if (!dbSheet) {
+      dbSheet = ss.insertSheet("Data base");
+      dbSheet.appendRow(["Database Status", "Updated At", "Version"]);
+      dbSheet.appendRow(["Connected", new Date().toISOString(), "1.0"]);
+    }
+
     // Action 2: Get standard Database Tables
     const db = {
       cables: {},
@@ -320,6 +328,126 @@ function doPost(e) {
       }
       
       return responseJson({ success: true, projectId, message: "Project saved successfully" });
+    }
+    
+    if (action === "saveDb") {
+      const db = postData.db;
+      if (!db) {
+        return responseJson({ success: false, error: "No database data provided" });
+      }
+      
+      // Ensure 'Data base' sheet exists and update status
+      let dbSheet = ss.getSheetByName("Data base");
+      if (!dbSheet) {
+        dbSheet = ss.insertSheet("Data base");
+      }
+      dbSheet.clear();
+      dbSheet.appendRow(["Database Status", "Updated At", "Version"]);
+      dbSheet.appendRow(["Connected", new Date().toISOString(), "1.0"]);
+      
+      // Save Cables
+      if (db.cables) {
+        let cablesSheet = ss.getSheetByName("Cables");
+        if (!cablesSheet) {
+          cablesSheet = ss.insertSheet("Cables");
+        }
+        cablesSheet.clear();
+        cablesSheet.appendRow(["CableType", "Size", "R", "X"]);
+        cablesSheet.setFrozenRows(1);
+        const rows = [];
+        for (const type in db.cables) {
+          db.cables[type].forEach(c => {
+            rows.push([type, c.size, c.r, c.x]);
+          });
+        }
+        if (rows.length > 0) {
+          cablesSheet.getRange(2, 1, rows.length, 4).setValues(rows);
+        }
+      }
+      
+      // Save Ampacity
+      if (db.ampacity) {
+        let ampacitySheet = ss.getSheetByName("Ampacity");
+        if (!ampacitySheet) {
+          ampacitySheet = ss.insertSheet("Ampacity");
+        }
+        ampacitySheet.clear();
+        ampacitySheet.appendRow(["CableType", "Installation", "Cores", "Size", "Amp"]);
+        ampacitySheet.setFrozenRows(1);
+        const rows = [];
+        for (const type in db.ampacity) {
+          for (const install in db.ampacity[type]) {
+            for (const cores in db.ampacity[type][install]) {
+              for (const size in db.ampacity[type][install][cores]) {
+                const amp = db.ampacity[type][install][cores][size];
+                rows.push([type, install, cores, size, amp]);
+              }
+            }
+          }
+        }
+        if (rows.length > 0) {
+          ampacitySheet.getRange(2, 1, rows.length, 5).setValues(rows);
+        }
+      }
+      
+      // Save CableOD
+      if (db.cableOD) {
+        let odSheet = ss.getSheetByName("CableOD");
+        if (!odSheet) {
+          odSheet = ss.insertSheet("CableOD");
+        }
+        odSheet.clear();
+        odSheet.appendRow(["Size", "Cores", "OD"]);
+        odSheet.setFrozenRows(1);
+        const rows = [];
+        for (const size in db.cableOD) {
+          for (const cores in db.cableOD[size]) {
+            const od = db.cableOD[size][cores];
+            rows.push([size, cores, od]);
+          }
+        }
+        if (rows.length > 0) {
+          odSheet.getRange(2, 1, rows.length, 3).setValues(rows);
+        }
+      }
+      
+      // Save Conduits
+      if (db.conduitSizes) {
+        let conduitSheet = ss.getSheetByName("Conduits");
+        if (!conduitSheet) {
+          conduitSheet = ss.insertSheet("Conduits");
+        }
+        conduitSheet.clear();
+        conduitSheet.appendRow(["Size", "ID", "Area40"]);
+        conduitSheet.setFrozenRows(1);
+        const rows = [];
+        db.conduitSizes.forEach(c => {
+          rows.push([c.size, c.id, c.area40]);
+        });
+        if (rows.length > 0) {
+          conduitSheet.getRange(2, 1, rows.length, 3).setValues(rows);
+        }
+      }
+      
+      // Save Trays
+      if (db.traySizes) {
+        let traySheet = ss.getSheetByName("Trays");
+        if (!traySheet) {
+          traySheet = ss.insertSheet("Trays");
+        }
+        traySheet.clear();
+        traySheet.appendRow(["Size"]);
+        traySheet.setFrozenRows(1);
+        const rows = [];
+        db.traySizes.forEach(sz => {
+          rows.push([sz]);
+        });
+        if (rows.length > 0) {
+          traySheet.getRange(2, 1, rows.length, 1).setValues(rows);
+        }
+      }
+      
+      return responseJson({ success: true, message: "Database saved successfully" });
     }
     
     return responseJson({ success: false, error: "Unknown action" });
