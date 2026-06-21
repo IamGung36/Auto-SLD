@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, Minus, Edit3, Settings2, Zap, Trash2, Layout, MousePointer2, Info, Cpu, Database, ChevronRight, ChevronLeft, X, Calculator, Server, FileText, Edit, Image as ImageIcon, Upload, Download, Share2, AlertTriangle, Menu, Save, FolderOpen, Camera, FileSpreadsheet, Wand2, ArrowUp, ArrowDown, ZoomIn, ZoomOut, Move, Columns, ClipboardList, Check, Globe, Cloud, DownloadCloud, UploadCloud, RefreshCw, Copy, History, Layers, ExternalLink } from 'lucide-react';
+import { Plus, Minus, Edit3, Settings2, Zap, Trash2, Layout, MousePointer2, Info, Cpu, Database, ChevronRight, ChevronLeft, X, Calculator, Server, FileText, Edit, Image as ImageIcon, Upload, Download, Share2, AlertTriangle, Menu, Save, FolderOpen, Camera, FileSpreadsheet, Wand2, ArrowUp, ArrowDown, ZoomIn, ZoomOut, Move, Columns, ClipboardList, Check, Globe, Cloud, DownloadCloud, UploadCloud, RefreshCw, Copy, History, Layers, ExternalLink, Lock, ShieldAlert } from 'lucide-react';
 
 const breakerOptions = [16, 20, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 320, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3200, 4000, 5000, 6300];
 const sizeOptions = ['2.5', '4', '6', '10', '16', '25', '35', '50', '70', '95', '120', '150', '185', '240', '300', '400', '500'];
@@ -790,9 +790,13 @@ const App = () => {
 
   // --- Google Sheets Sync States & Methods ---
   const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem('auto_sld_sheet_url') || '');
-  const [appsScriptUrl, setAppsScriptUrl] = useState(() => localStorage.getItem('auto_sld_apps_script_url') || '');
+  const [appsScriptUrl, setAppsScriptUrl] = useState(() => localStorage.getItem('auto_sld_apps_script_url') || 'https://script.google.com/macros/s/AKfycbySSIU5F412TvnomCnWAkOSbZo2AlcinEqDKOOrXcfHEr5b9N4gbhuNLofiAB6Q83gy/exec');
+  const [showAppsScriptConfig, setShowAppsScriptConfig] = useState(false);
   const [sheetStatus, setSheetStatus] = useState('disconnected'); // disconnected, connected, syncing, error
   const [sheetError, setSheetError] = useState('');
+  const [authError, setAuthError] = useState(null); // null or { error: string, email: string, adminEmail: string }
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [showSetupInstructions, setShowSetupInstructions] = useState(false);
   const [savedProjects, setSavedProjects] = useState([]);
   const [currentProjectId, setCurrentProjectId] = useState(() => localStorage.getItem('auto_sld_current_project_id') || '');
   const [syncLogs, setSyncLogs] = useState([]);
@@ -873,11 +877,22 @@ const App = () => {
           if (tSizes && tSizes.length > 0) setTraySizes(tSizes);
           
           setSheetStatus('connected');
+          setAuthError(null);
           logSync('Database successfully synchronized via Apps Script Web App (Read-Write).');
           
           fetchProjectsList(customScriptUrl);
         } else {
-          throw new Error(data.error || 'Invalid database structure returned from Apps Script');
+          if (data.error === "Access Denied" || data.error === "Login Required") {
+            setAuthError({
+              error: data.error,
+              email: data.email || '',
+              adminEmail: data.adminEmail || ''
+            });
+            setSheetStatus('error');
+            logSync(`Authentication Error: ${data.error}`);
+          } else {
+            throw new Error(data.error || 'Invalid database structure returned from Apps Script');
+          }
         }
       } else if (customSheetUrl && customSheetUrl.trim() !== '') {
         const sheetId = getSheetIdFromUrl(customSheetUrl);
@@ -978,10 +993,17 @@ const App = () => {
     } catch (e) {
       setSheetStatus('error');
       const errMsg = e.message === 'Failed to fetch'
-        ? 'Failed to fetch (กรุณาตรวจสอบว่าได้ตั้งค่าสิทธิ์ Web App ใน Apps Script เป็น "Anyone (ทุกคน)" หรือสะกด URL ถูกต้อง)'
+        ? 'Failed to fetch (อาจเกิดจากยังไม่ได้เข้าสู่ระบบ Google Account, สิทธิ์เข้าถึง Web App ไม่ถูกต้อง หรือสะกด URL ไม่ถูกต้อง)'
         : e.message;
       setSheetError(errMsg);
       logSync(`Sync Error: ${errMsg}`);
+      if (e.message === 'Failed to fetch' && customScriptUrl) {
+        setAuthError({
+          error: 'Login Required',
+          email: '',
+          adminEmail: ''
+        });
+      }
     } finally {
       setIsPulling(false);
     }
@@ -1082,6 +1104,18 @@ const App = () => {
       handlePullDatabase(sheetUrl, appsScriptUrl);
     }
   }, []);
+
+  useEffect(() => {
+    let interval;
+    if (appsScriptUrl && authError?.error === 'Login Required' && !isPulling) {
+      interval = setInterval(() => {
+        handlePullDatabase(sheetUrl, appsScriptUrl);
+      }, 3000); // Poll connection status every 3 seconds
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [appsScriptUrl, authError, isPulling]);
 
   // --- File Management & Export Methods ---
   const getBaseFileName = () => {
@@ -2006,6 +2040,8 @@ const App = () => {
   const isMainAmpPass = mainAmpDerate >= mainAtAdjustVal;
   const mainVd = getCalculatedVd({ loadA: mainAmpV, cal: globalSpecs.mainCal }, systemType, calVoltage, globalPf, cableDB);
 
+  // Login protection screen bypassed
+
   return (
     <div className="flex h-screen bg-[#0f172a] text-slate-200 overflow-hidden selection:bg-cyan-500 selection:text-white font-sarabun relative">
       
@@ -2619,13 +2655,16 @@ const App = () => {
                         
                         <div>
                           <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
-                            Google Apps Script Web App URL (สำหรับเซฟและโหลดโปรเจกต์)
+                            Google Apps Script Web App URL (ระบบจัดการสิทธิ์โดยแอดมิน)
                           </label>
                           <input 
                             type="text" 
-                            placeholder="https://script.google.com/macros/s/.../exec" 
                             value={appsScriptUrl}
-                            onChange={(e) => setAppsScriptUrl(e.target.value)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setAppsScriptUrl(val);
+                              localStorage.setItem('auto_sld_apps_script_url', val);
+                            }}
                             className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-[13px] text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none font-sarabun"
                           />
                         </div>

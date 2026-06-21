@@ -30,110 +30,120 @@ function doGet(e) {
     // 1. Get active user's Google email
     let userEmail = Session.getActiveUser().getEmail();
     
-    // Fallback if running as Owner in a personal Gmail context
-    if (!userEmail) {
-      return HtmlService.createHtmlOutput(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Configuration Required</title>
-          <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
-          <style>
-            body { font-family: 'Sarabun', sans-serif; background-color: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 20px; }
-            .card { background-color: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 40px; max-width: 500px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-            h2 { color: #f59e0b; margin-top: 0; font-size: 24px; }
-            p { font-size: 15px; color: #94a3b8; line-height: 1.6; text-align: left; }
-            ol { text-align: left; color: #cbd5e1; font-size: 14px; }
-            li { margin-bottom: 10px; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <h2>⚠️ ต้องตั้งค่าการเข้าถึงเพิ่มเติม</h2>
-            <p>ระบบตรวจไม่พบอีเมลบัญชี Google ของคุณ เนื่องจากนโยบายความเป็นส่วนตัวของกูเกิล กรุณาแจ้งผู้ดูแลระบบให้ทำการเปลี่ยนการตั้งค่าการ Deploy ดังนี้:</p>
-            <ol>
-              <li>ในหน้า Apps Script ให้กดปุ่ม <strong>Deploy > Manage deployments</strong></li>
-              <li>กดสัญลักษณ์ดินสอเพื่อแก้ไขเว็บแอป</li>
-              <li>เปลี่ยนหัวข้อ <strong>Execute as (เรียกใช้งานในฐานะ)</strong> จากเดิม "Me (ฉัน)" ให้เป็น <strong>"User accessing the web app (ผู้ใช้ที่เข้าถึงเว็บแอป)"</strong></li>
-              <li>เปลี่ยนหัวข้อ <strong>Who has access (ผู้มีสิทธิ์เข้าถึง)</strong> ให้เป็น <strong>"Anyone with Google Account (ทุกคนที่มีบัญชี Google)"</strong></li>
-              <li>กด <strong>Deploy</strong> อีกครั้ง</li>
-            </ol>
-            <p style="font-size: 12px; color: #64748b;">*หมายเหตุ: สเปรดชีตหลักจะต้องแชร์ให้ผู้ใช้สามารถแก้ไขได้ด้วย</p>
-          </div>
-        </body>
-        </html>
-      `).setTitle('Configuration Required - SLD STUDIO');
-    }
-    
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    
-    // 2. Check or Create Users table in Google Sheets
-    let usersSheet = ss.getSheetByName("Users");
-    if (!usersSheet) {
-      usersSheet = ss.insertSheet("Users");
-      usersSheet.appendRow(["Email", "Role", "ApprovedAt"]);
-      // Add the active user (the creator/admin) as the first Admin
-      usersSheet.appendRow([userEmail, "Admin", new Date().toISOString()]);
-      usersSheet.setFrozenRows(1);
-    }
-    
-    // 3. Verify user email in Users list
-    const usersData = usersSheet.getDataRange().getValues();
-    let isApproved = false;
-    let userRole = "";
-    
-    for (let i = 1; i < usersData.length; i++) {
-      const row = usersData[i];
-      if (row[0] && row[0].toString().toLowerCase().trim() === userEmail.toLowerCase().trim()) {
-        isApproved = true;
-        userRole = row[1] || "User";
-        break;
-      }
-    }
-    
-    // If user is not approved, show Access Denied page
-    if (!isApproved) {
-      const adminEmail = usersData[1] ? usersData[1][0] : "ผู้ดูแลระบบ";
-      return HtmlService.createHtmlOutput(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Access Denied - SLD STUDIO</title>
-          <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
-          <style>
-            body { font-family: 'Sarabun', sans-serif; background-color: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 20px; }
-            .card { background-color: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 40px; max-width: 500px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-            h2 { color: #f43f5e; margin-top: 0; font-size: 24px; }
-            p { font-size: 15px; color: #94a3b8; line-height: 1.6; }
-            .email-box { background-color: #0f172a; border-radius: 8px; padding: 12px; margin: 20px 0; font-family: monospace; font-size: 16px; color: #38bdf8; font-weight: bold; border: 1px dashed #334155; }
-            .admin-contact { font-size: 13px; color: #64748b; margin-top: 30px; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <h2>⚠️ การเข้าถึงถูกปฏิเสธ (Access Denied)</h2>
-            <p>บัญชี Google ของคุณยังไม่ได้รับอนุมัติให้ใช้งานระบบนี้:</p>
-            <div class="email-box">${userEmail}</div>
-            <p>กรุณาติดต่อผู้ดูแลระบบเพื่อขออนุมัติสิทธิ์การเข้าใช้งานโครงการ</p>
-            <div class="admin-contact">อีเมลผู้ดูแลระบบ (Admin): ${adminEmail}</div>
-          </div>
-        </body>
-        </html>
-      `).setTitle('Access Denied - SLD STUDIO');
-    }
-    
-    // 4. Handle API / Web App Requests
+    // 2. Serve HTML UI if no action parameter is specified (browser request)
     const action = e.parameter.action;
-    
-    // If no action parameter, assume browser request and serve HTML UI
     if (!action) {
       return HtmlService.createHtmlOutputFromFile('Index')
           .setTitle('SLD STUDIO Pro - Solar Design Tool')
           .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
           .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
     }
+
+    // Serve self-closing success page for login requests
+    if (action === "login") {
+      const htmlContent = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <title>เข้าสู่ระบบสำเร็จ | SLD STUDIO Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Sarabun', sans-serif;
+        background-color: #070d19;
+        color: #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        text-align: center;
+      }
+      .card {
+        background-color: #0f172a;
+        padding: 3rem;
+        border-radius: 1.5rem;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+        border: 1px solid #1e293b;
+        max-width: 450px;
+        width: 90%;
+      }
+      .success-icon {
+        background-color: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        color: #10b981;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+        margin: 0 auto 1.5rem;
+      }
+      h2 {
+        color: #38bdf8;
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin-top: 0;
+        margin-bottom: 0.75rem;
+      }
+      p {
+        color: #94a3b8;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        margin-bottom: 2rem;
+      }
+      .btn {
+        background: linear-gradient(to right, #06b6d4, #3b82f6);
+        color: white;
+        border: none;
+        padding: 0.8rem 2rem;
+        font-size: 0.95rem;
+        font-weight: bold;
+        border-radius: 0.75rem;
+        cursor: pointer;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s;
+      }
+      .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="success-icon">✓</div>
+      <h2>เข้าสู่ระบบและยืนยันสิทธิ์สำเร็จ</h2>
+      <p>
+        โปรแกรมได้รับสิทธิ์ซิงค์ฐานข้อมูลโครงการเรียบร้อยแล้ว<br>
+        <strong>คุณสามารถปิดหน้าต่างนี้เพื่อเริ่มใช้งานได้ทันที</strong>
+      </p>
+      <button onclick="window.close()" class="btn">ปิดหน้าต่างนี้ (Close Window)</button>
+    </div>
+    <script>
+      // Try to close window automatically after 1.5s
+      setTimeout(function() {
+        window.close();
+      }, 1500);
+    </script>
+  </body>
+</html>
+      `;
+      return HtmlService.createHtmlOutput(htmlContent)
+          .setTitle('SLD STUDIO Pro - Solar Design Tool')
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+          .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+    }
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    
     // Action 1: Get list of saved projects
     if (action === "getProjects") {
       const sheet = ss.getSheetByName("Projects");
@@ -257,9 +267,10 @@ function doGet(e) {
 // POST Request handler
 function doPost(e) {
   try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    
     const postData = JSON.parse(e.postData.contents);
     const action = postData.action;
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
     
     if (action === "saveProject") {
       let sheet = ss.getSheetByName("Projects");
