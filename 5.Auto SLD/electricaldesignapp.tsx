@@ -489,7 +489,7 @@ const AuthWall = ({ handleLoginUser, handleRegisterUser }) => {
 
         <div className="mt-6 border-t border-slate-800/80 pt-4 text-center">
           <p className="text-[10px] text-slate-500 leading-relaxed">
-            เชื่อมต่อกับฐานข้อมูลระบบอัตโนมัติ<br/>
+            ระบบซิงค์ฐานข้อมูลอัตโนมัติ<br/>
             ระบบจะสร้างผู้ดูแลระบบ <span className="text-cyan-600 font-bold">admin@admin.com</span> (รหัสผ่าน: <span className="text-cyan-600 font-bold">admin123</span>) เป็นค่าเริ่มต้นหากติดตั้งชีทใหม่
           </p>
         </div>
@@ -848,7 +848,7 @@ const App = () => {
   const [isDbEditMode, setIsDbEditMode] = useState(false);
 
   const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem('auto_sld_sheet_url') || '');
-  const [appsScriptUrl, setAppsScriptUrl] = useState(() => localStorage.getItem('auto_sld_apps_script_url') || DEFAULT_APPS_SCRIPT_URL);
+  const [appsScriptUrl, setAppsScriptUrl] = useState(DEFAULT_APPS_SCRIPT_URL);
   const [isPulling, setIsPulling] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
   const [sheetStatus, setSheetStatus] = useState('disconnected');
@@ -871,10 +871,10 @@ const App = () => {
 
   const handleLoginUser = async (email, password) => {
     try {
-      const scriptUrl = appsScriptUrl || DEFAULT_APPS_SCRIPT_URL;
+      const scriptUrl = DEFAULT_APPS_SCRIPT_URL;
       const res = await fetch(scriptUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           action: 'loginUser',
           email,
@@ -897,10 +897,10 @@ const App = () => {
 
   const handleRegisterUser = async (name, email, password) => {
     try {
-      const scriptUrl = appsScriptUrl || DEFAULT_APPS_SCRIPT_URL;
+      const scriptUrl = DEFAULT_APPS_SCRIPT_URL;
       const res = await fetch(scriptUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           action: 'register',
           name,
@@ -1130,11 +1130,6 @@ const App = () => {
   };
 
   const handlePushDatabase = async () => {
-    if (!appsScriptUrl || appsScriptUrl.trim() === '') {
-      alert("กรุณาระบุ URL Google Apps Script Web App ในส่วนตั้งค่าเชื่อมต่อก่อน!");
-      return;
-    }
-    
     setIsPushing(true);
     logSync('กำลังส่งฐานข้อมูลปัจจุบันไปยัง Google Sheet...');
     
@@ -1147,9 +1142,9 @@ const App = () => {
         traySizes: traySizes
       };
       
-      const res = await fetch(appsScriptUrl, {
+      const res = await fetch(DEFAULT_APPS_SCRIPT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           action: 'saveDb',
           db: dbData
