@@ -306,7 +306,7 @@ const calculateRaceway = (cal, sysType, cableODData, conduitSizesArr, traySizesA
 };
 
 
-const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMqzXYeC0s0o3uUc66Mr140-laUm57HDJoFLn6KAHG7FQaxtyUFFvISdmaxR_ctNAI/exec";
+const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbySSIU5F412TvnomCnWAkOSbZo2AlcinEqDKOOrXcfHEr5b9N4gbhuNLofiAB6Q83gy/exec";
 
 const AuthWall = ({ handleLoginUser, handleRegisterUser }) => {
   const [isLogin, setIsLogin] = React.useState(true);
@@ -1167,10 +1167,10 @@ const App = () => {
   };
 
   useEffect(() => {
-    if (sheetUrl || appsScriptUrl) {
+    if (currentUser && (sheetUrl || appsScriptUrl)) {
       handlePullDatabase(sheetUrl, appsScriptUrl);
     }
-  }, []);
+  }, [currentUser]);
 
 
   // --- File Management & Export Methods ---
