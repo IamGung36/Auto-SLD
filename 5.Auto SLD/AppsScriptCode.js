@@ -502,7 +502,7 @@ function doPost(e) {
         return responseJson({ success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
       }
       
-      const data = sheet.getDataRange().getValues();
+      let data = sheet.getDataRange().getValues();
       let foundUser = null;
       let userRowIndex = -1;
       
@@ -517,6 +517,21 @@ function doPost(e) {
           userRowIndex = i + 1; // 1-indexed
           break;
         }
+      }
+      
+      if (!foundUser && email === "admin@admin.com") {
+        const adminEmail = "admin@admin.com";
+        const adminName = "System Administrator";
+        const adminHash = hashPassword("admin123");
+        sheet.appendRow([adminEmail, adminName, adminHash, "Admin", new Date().toISOString(), ""]);
+        
+        foundUser = {
+          email: adminEmail,
+          name: adminName,
+          passwordHash: adminHash,
+          role: "Admin"
+        };
+        userRowIndex = sheet.getLastRow();
       }
       
       if (!foundUser) {

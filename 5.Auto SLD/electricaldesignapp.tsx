@@ -306,7 +306,7 @@ const calculateRaceway = (cal, sysType, cableODData, conduitSizesArr, traySizesA
 };
 
 
-const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbySSIU5F412TvnomCnWAkOSbZo2AlcinEqDKOOrXcfHEr5b9N4gbhuNLofiAB6Q83gy/exec";
+const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxMCZ052kVoq4_QdquiEz_IVRfN9oBF9L-BrE71hQGF8RpIqVPODq_qLNWaAxBn0uER/exec";
 
 const AuthWall = ({ handleLoginUser, handleRegisterUser }) => {
   const [isLogin, setIsLogin] = React.useState(true);
