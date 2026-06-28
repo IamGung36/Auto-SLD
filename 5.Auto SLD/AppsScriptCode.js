@@ -167,103 +167,100 @@ function doGet(e) {
     
     // Ensure 'Data base' sheet exists
     let dbSheet = ss.getSheetByName("Data base");
-    if (!dbSheet) {
-      dbSheet = ss.insertSheet("Data base");
-      dbSheet.appendRow(["Database Status", "Updated At", "Version"]);
-      dbSheet.appendRow(["Connected", new Date().toISOString(), "1.0"]);
+
+    // Action 3: Cleanup database sheets
+    if (action === "cleanupDb") {
+      const sheetsToDelete = ["Cables", "Ampacity", "CableOD", "Conduits", "Trays", "Data base"];
+      let deletedCount = 0;
+      sheetsToDelete.forEach(name => {
+        const s = ss.getSheetByName(name);
+        if (s) {
+          ss.deleteSheet(s);
+          deletedCount++;
+        }
+      });
+      return responseJson({ success: true, message: "Deleted " + deletedCount + " database sheets successfully." });
     }
 
     // Action 2: Get standard Database Tables
-    const db = {
-      cables: {},
-      ampacity: {},
-      cableOD: {},
-      conduitSizes: [],
-      traySizes: []
-    };
-    
-    // 1. Parse Cables
-    const cablesSheet = ss.getSheetByName("Cables");
-    if (cablesSheet) {
-      const rows = cablesSheet.getDataRange().getValues();
-      if (rows.length > 1) {
-        const headers = rows[0]; // CableType, Size, R, X
-        for (let i = 1; i < rows.length; i++) {
-          const type = rows[i][0];
-          const size = String(rows[i][1]);
-          const r = String(rows[i][2]);
-          const x = String(rows[i][3]);
-          
+    if (action === "pullDb") {
+      if (!dbSheet) {
+        return responseJson({ success: true, db: null, message: "Data base sheet not found, using frontend defaults." });
+      }
+      
+      const rows = dbSheet.getDataRange().getValues();
+      if (rows.length <= 2) {
+        return responseJson({ success: true, db: null, message: "Data base sheet is empty, using frontend defaults." });
+      }
+
+      const db = {
+        cables: {},
+        ampacity: {},
+        cableOD: {},
+        conduitSizes: [],
+        traySizes: []
+      };
+      
+      // 1. Parse Cables (Columns A-D, indices 0..3)
+      for (let i = 2; i < rows.length; i++) {
+        const type = rows[i][0];
+        const size = String(rows[i][1]);
+        const r = String(rows[i][2]);
+        const x = String(rows[i][3]);
+        if (type && size && r && x) {
           if (!db.cables[type]) db.cables[type] = [];
           db.cables[type].push({ size, r, x });
         }
       }
-    }
-    
-    // 2. Parse Ampacity
-    const ampacitySheet = ss.getSheetByName("Ampacity");
-    if (ampacitySheet) {
-      const rows = ampacitySheet.getDataRange().getValues();
-      if (rows.length > 1) {
-        for (let i = 1; i < rows.length; i++) {
-          const type = rows[i][0];
-          const install = rows[i][1];
-          const cores = rows[i][2];
-          const size = String(rows[i][3]);
-          const amp = Number(rows[i][4]);
-          
+      
+      // 2. Parse Ampacity (Columns F-J, indices 5..9)
+      for (let i = 2; i < rows.length; i++) {
+        const type = rows[i][5];
+        const install = rows[i][6];
+        const cores = rows[i][7];
+        const size = String(rows[i][8]);
+        const amp = Number(rows[i][9]);
+        if (type && install && cores && size && !isNaN(amp)) {
           if (!db.ampacity[type]) db.ampacity[type] = {};
           if (!db.ampacity[type][install]) db.ampacity[type][install] = {};
           if (!db.ampacity[type][install][cores]) db.ampacity[type][install][cores] = {};
           db.ampacity[type][install][cores][size] = amp;
         }
       }
-    }
-    
-    // 3. Parse CableOD
-    const odSheet = ss.getSheetByName("CableOD");
-    if (odSheet) {
-      const rows = odSheet.getDataRange().getValues();
-      if (rows.length > 1) {
-        for (let i = 1; i < rows.length; i++) {
-          const size = String(rows[i][0]);
-          const cores = rows[i][1];
-          const od = Number(rows[i][2]);
-          
+      
+      // 3. Parse CableOD (Columns L-N, indices 11..13)
+      for (let i = 2; i < rows.length; i++) {
+        const size = String(rows[i][11]);
+        const cores = rows[i][12];
+        const od = Number(rows[i][13]);
+        if (size && cores && !isNaN(od)) {
           if (!db.cableOD[size]) db.cableOD[size] = {};
           db.cableOD[size][cores] = od;
         }
       }
-    }
-    
-    // 4. Parse Conduits
-    const conduitSheet = ss.getSheetByName("Conduits");
-    if (conduitSheet) {
-      const rows = conduitSheet.getDataRange().getValues();
-      if (rows.length > 1) {
-        for (let i = 1; i < rows.length; i++) {
-          db.conduitSizes.push({
-            size: String(rows[i][0]),
-            id: Number(rows[i][1]),
-            area40: Number(rows[i][2])
-          });
+      
+      // 4. Parse Conduits (Columns P-R, indices 15..17)
+      for (let i = 2; i < rows.length; i++) {
+        const size = String(rows[i][15]);
+        const id = Number(rows[i][16]);
+        const area40 = Number(rows[i][17]);
+        if (size && !isNaN(id) && !isNaN(area40)) {
+          db.conduitSizes.push({ size, id, area40 });
         }
       }
-    }
-    
-    // 5. Parse Trays
-    const traySheet = ss.getSheetByName("Trays");
-    if (traySheet) {
-      const rows = traySheet.getDataRange().getValues();
-      if (rows.length > 1) {
-        for (let i = 1; i < rows.length; i++) {
-          const sz = Number(rows[i][0]);
-          if (!isNaN(sz)) db.traySizes.push(sz);
+      
+      // 5. Parse Trays (Column T, index 19)
+      for (let i = 2; i < rows.length; i++) {
+        const sz = Number(rows[i][19]);
+        if (!isNaN(sz) && rows[i][19] !== "") {
+          db.traySizes.push(sz);
         }
       }
+      
+      return responseJson({ success: true, db });
     }
     
-    return responseJson({ success: true, db });
+    return responseJson({ success: false, error: "Invalid action" });
   } catch (error) {
     return responseJson({ success: false, error: error.toString() });
   }
@@ -333,118 +330,111 @@ function doPost(e) {
         return responseJson({ success: false, error: "No database data provided" });
       }
       
-      // Ensure 'Data base' sheet exists and update status
+      // Ensure 'Data base' sheet exists
       let dbSheet = ss.getSheetByName("Data base");
       if (!dbSheet) {
         dbSheet = ss.insertSheet("Data base");
       }
       dbSheet.clear();
-      dbSheet.appendRow(["Database Status", "Updated At", "Version"]);
-      dbSheet.appendRow(["Connected", new Date().toISOString(), "1.0"]);
       
-      // Save Cables
+      // Setup titles and headers
+      dbSheet.getRange("A1").setValue("Cables");
+      dbSheet.getRange("A2:D2").setValues([["Cable Type", "Size", "R", "X"]]);
+      
+      dbSheet.getRange("F1").setValue("Ampacity");
+      dbSheet.getRange("F2:J2").setValues([["Cable Type", "Installation", "Cores", "Size", "Ampacity"]]);
+      
+      dbSheet.getRange("L1").setValue("CableOD");
+      dbSheet.getRange("L2:N2").setValues([["Size", "Cores", "OD"]]);
+      
+      dbSheet.getRange("P1").setValue("Conduits");
+      dbSheet.getRange("P2:R2").setValues([["Size", "ID", "Area40"]]);
+      
+      dbSheet.getRange("T1").setValue("Trays");
+      dbSheet.getRange("T2").setValue("Size");
+      
+      // Format headers as Bold
+      dbSheet.getRange("A1:T2").setFontWeight("bold");
+      
+      // 1. Cables
+      const cablesRows = [];
       if (db.cables) {
-        let cablesSheet = ss.getSheetByName("Cables");
-        if (!cablesSheet) {
-          cablesSheet = ss.insertSheet("Cables");
-        }
-        cablesSheet.clear();
-        cablesSheet.appendRow(["CableType", "Size", "R", "X"]);
-        cablesSheet.setFrozenRows(1);
-        const rows = [];
         for (const type in db.cables) {
           db.cables[type].forEach(c => {
-            rows.push([type, c.size, c.r, c.x]);
+            cablesRows.push([type, c.size, c.r, c.x]);
           });
-        }
-        if (rows.length > 0) {
-          cablesSheet.getRange(2, 1, rows.length, 4).setValues(rows);
         }
       }
       
-      // Save Ampacity
+      // 2. Ampacity
+      const ampacityRows = [];
       if (db.ampacity) {
-        let ampacitySheet = ss.getSheetByName("Ampacity");
-        if (!ampacitySheet) {
-          ampacitySheet = ss.insertSheet("Ampacity");
-        }
-        ampacitySheet.clear();
-        ampacitySheet.appendRow(["CableType", "Installation", "Cores", "Size", "Amp"]);
-        ampacitySheet.setFrozenRows(1);
-        const rows = [];
         for (const type in db.ampacity) {
           for (const install in db.ampacity[type]) {
             for (const cores in db.ampacity[type][install]) {
               for (const size in db.ampacity[type][install][cores]) {
                 const amp = db.ampacity[type][install][cores][size];
-                rows.push([type, install, cores, size, amp]);
+                ampacityRows.push([type, install, cores, size, amp]);
               }
             }
           }
         }
-        if (rows.length > 0) {
-          ampacitySheet.getRange(2, 1, rows.length, 5).setValues(rows);
-        }
       }
       
-      // Save CableOD
+      // 3. CableOD
+      const odRows = [];
       if (db.cableOD) {
-        let odSheet = ss.getSheetByName("CableOD");
-        if (!odSheet) {
-          odSheet = ss.insertSheet("CableOD");
-        }
-        odSheet.clear();
-        odSheet.appendRow(["Size", "Cores", "OD"]);
-        odSheet.setFrozenRows(1);
-        const rows = [];
         for (const size in db.cableOD) {
           for (const cores in db.cableOD[size]) {
             const od = db.cableOD[size][cores];
-            rows.push([size, cores, od]);
+            odRows.push([size, cores, od]);
           }
         }
-        if (rows.length > 0) {
-          odSheet.getRange(2, 1, rows.length, 3).setValues(rows);
-        }
       }
       
-      // Save Conduits
+      // 4. Conduits
+      const conduitRows = [];
       if (db.conduitSizes) {
-        let conduitSheet = ss.getSheetByName("Conduits");
-        if (!conduitSheet) {
-          conduitSheet = ss.insertSheet("Conduits");
-        }
-        conduitSheet.clear();
-        conduitSheet.appendRow(["Size", "ID", "Area40"]);
-        conduitSheet.setFrozenRows(1);
-        const rows = [];
         db.conduitSizes.forEach(c => {
-          rows.push([c.size, c.id, c.area40]);
+          conduitRows.push([c.size, c.id, c.area40]);
         });
-        if (rows.length > 0) {
-          conduitSheet.getRange(2, 1, rows.length, 3).setValues(rows);
-        }
       }
       
-      // Save Trays
+      // 5. Trays
+      const trayRows = [];
       if (db.traySizes) {
-        let traySheet = ss.getSheetByName("Trays");
-        if (!traySheet) {
-          traySheet = ss.insertSheet("Trays");
-        }
-        traySheet.clear();
-        traySheet.appendRow(["Size"]);
-        traySheet.setFrozenRows(1);
-        const rows = [];
         db.traySizes.forEach(sz => {
-          rows.push([sz]);
+          trayRows.push([sz]);
         });
-        if (rows.length > 0) {
-          traySheet.getRange(2, 1, rows.length, 1).setValues(rows);
-        }
       }
       
-      return responseJson({ success: true, message: "Database saved successfully" });
+      // Write data to sheet
+      if (cablesRows.length > 0) {
+        dbSheet.getRange(3, 1, cablesRows.length, 4).setValues(cablesRows);
+      }
+      if (ampacityRows.length > 0) {
+        dbSheet.getRange(3, 6, ampacityRows.length, 5).setValues(ampacityRows);
+      }
+      if (odRows.length > 0) {
+        dbSheet.getRange(3, 12, odRows.length, 3).setValues(odRows);
+      }
+      if (conduitRows.length > 0) {
+        dbSheet.getRange(3, 16, conduitRows.length, 3).setValues(conduitRows);
+      }
+      if (trayRows.length > 0) {
+        dbSheet.getRange(3, 20, trayRows.length, 1).setValues(trayRows);
+      }
+      
+      // Delete old sheets
+      const oldSheets = ["Cables", "Ampacity", "CableOD", "Conduits", "Trays"];
+      oldSheets.forEach(name => {
+        const s = ss.getSheetByName(name);
+        if (s) {
+          ss.deleteSheet(s);
+        }
+      });
+      
+      return responseJson({ success: true, message: "Database saved to 'Data base' sheet and old sheets deleted successfully." });
     }
 
     if (action === "register") {

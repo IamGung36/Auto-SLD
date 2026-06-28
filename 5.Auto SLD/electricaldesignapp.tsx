@@ -1100,30 +1100,29 @@ const App = () => {
           });
         };
         
-        logSync('กำลังโหลดชีท Cables...');
-        const cablesCsv = await fetchCSV('Cables');
-        logSync('กำลังโหลดชีท Ampacity...');
-        const ampacityCsv = await fetchCSV('Ampacity');
-        logSync('กำลังโหลดชีท CableOD...');
-        const odCsv = await fetchCSV('CableOD');
-        logSync('กำลังโหลดชีท Conduits...');
-        const conduitCsv = await fetchCSV('Conduits');
-        logSync('กำลังโหลดชีท Trays...');
-        const trayCsv = await fetchCSV('Trays');
+        logSync('กำลังโหลดชีท Data base...');
+        let dbRows: string[][] = [];
+        try {
+          const dbCsv = await fetchCSV('Data base');
+          dbRows = parseCSV(dbCsv);
+        } catch (csvError: any) {
+          logSync(`ไม่พบชีท Data base หรือโหลดไม่สำเร็จ (${csvError.message}) จะใช้ค่าเริ่มต้นแทน`);
+          setSheetStatus('connected');
+          return;
+        }
 
         logSync('กำลังนำเข้าข้อมูล...');
         
-        // 1. Cables
-        const cablesRows = parseCSV(cablesCsv);
+        // 1. Cables (Columns A-D, indices 0..3)
         const cablesTemp: any = {};
-        for (let i = 1; i < cablesRows.length; i++) {
-          const row = cablesRows[i];
+        for (let i = 2; i < dbRows.length; i++) {
+          const row = dbRows[i];
           if (row.length >= 4) {
             const type = row[0];
             const size = row[1];
             const r = row[2];
             const x = row[3];
-            if (type && size) {
+            if (type && size && r && x) {
               if (!cablesTemp[type]) cablesTemp[type] = [];
               cablesTemp[type].push({ size, r, x });
             }
@@ -1131,18 +1130,17 @@ const App = () => {
         }
         if (Object.keys(cablesTemp).length > 0) setCableDB(cablesTemp);
 
-        // 2. Ampacity
-        const ampacityRows = parseCSV(ampacityCsv);
+        // 2. Ampacity (Columns F-J, indices 5..9)
         const ampacityTemp: any = {};
-        for (let i = 1; i < ampacityRows.length; i++) {
-          const row = ampacityRows[i];
-          if (row.length >= 5) {
-            const type = row[0];
-            const install = row[1];
-            const cores = row[2];
-            const size = row[3];
-            const amp = Number(row[4]);
-            if (type && install && cores && size) {
+        for (let i = 2; i < dbRows.length; i++) {
+          const row = dbRows[i];
+          if (row.length >= 10) {
+            const type = row[5];
+            const install = row[6];
+            const cores = row[7];
+            const size = row[8];
+            const amp = Number(row[9]);
+            if (type && install && cores && size && !isNaN(amp)) {
               if (!ampacityTemp[type]) ampacityTemp[type] = {};
               if (!ampacityTemp[type][install]) ampacityTemp[type][install] = {};
               if (!ampacityTemp[type][install][cores]) ampacityTemp[type][install][cores] = {};
@@ -1152,16 +1150,15 @@ const App = () => {
         }
         if (Object.keys(ampacityTemp).length > 0) setAmpacityDB(ampacityTemp);
 
-        // 3. CableOD
-        const odRows = parseCSV(odCsv);
+        // 3. CableOD (Columns L-N, indices 11..13)
         const odTemp: any = {};
-        for (let i = 1; i < odRows.length; i++) {
-          const row = odRows[i];
-          if (row.length >= 3) {
-            const size = row[0];
-            const cores = row[1];
-            const od = Number(row[2]);
-            if (size && cores) {
+        for (let i = 2; i < dbRows.length; i++) {
+          const row = dbRows[i];
+          if (row.length >= 14) {
+            const size = row[11];
+            const cores = row[12];
+            const od = Number(row[13]);
+            if (size && cores && !isNaN(od)) {
               if (!odTemp[size]) odTemp[size] = {};
               odTemp[size][cores] = od;
             }
@@ -1169,30 +1166,30 @@ const App = () => {
         }
         if (Object.keys(odTemp).length > 0) setCableOD(odTemp);
 
-        // 4. Conduits
-        const conduitRows = parseCSV(conduitCsv);
+        // 4. Conduits (Columns P-R, indices 15..17)
         const conduitsTemp = [];
-        for (let i = 1; i < conduitRows.length; i++) {
-          const row = conduitRows[i];
-          if (row.length >= 3) {
-            const size = row[0];
-            const id = Number(row[1]);
-            const area40 = Number(row[2]);
-            if (size && !isNaN(id)) {
+        for (let i = 2; i < dbRows.length; i++) {
+          const row = dbRows[i];
+          if (row.length >= 18) {
+            const size = row[15];
+            const id = Number(row[16]);
+            const area40 = Number(row[17]);
+            if (size && !isNaN(id) && !isNaN(area40)) {
               conduitsTemp.push({ size, id, area40 });
             }
           }
         }
         if (conduitsTemp.length > 0) setConduitSizes(conduitsTemp);
 
-        // 5. Trays
-        const trayRows = parseCSV(trayCsv);
+        // 5. Trays (Column T, index 19)
         const traysTemp = [];
-        for (let i = 1; i < trayRows.length; i++) {
-          const row = trayRows[i];
-          if (row.length >= 1) {
-            const size = Number(row[0]);
-            if (!isNaN(size)) traysTemp.push(size);
+        for (let i = 2; i < dbRows.length; i++) {
+          const row = dbRows[i];
+          if (row.length >= 20) {
+            const size = Number(row[19]);
+            if (!isNaN(size) && row[19] !== "") {
+              traysTemp.push(size);
+            }
           }
         }
         if (traysTemp.length > 0) setTraySizes(traysTemp);
