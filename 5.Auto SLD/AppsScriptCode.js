@@ -451,7 +451,7 @@ function doPost(e) {
       let sheet = ss.getSheetByName("Users");
       if (!sheet) {
         sheet = ss.insertSheet("Users");
-        sheet.appendRow(["Email", "Name", "PasswordHash", "Role", "CreatedAt", "LastLogin"]);
+        sheet.appendRow(["Email", "Name", "PasswordHash", "Role", "CreatedAt", "LastLogin", "Status"]);
         sheet.setFrozenRows(1);
       }
       
@@ -474,10 +474,11 @@ function doPost(e) {
       const passwordHash = hashPassword(password);
       const role = "User"; // Default role when registering
       const createdAt = new Date().toISOString();
+      const status = "Pending"; // New registration requires Admin approval
       
-      sheet.appendRow([email, name, passwordHash, role, createdAt, ""]);
+      sheet.appendRow([email, name, passwordHash, role, createdAt, "", status]);
       
-      return responseJson({ success: true, message: "สมัครสมาชิกสำเร็จ!" });
+      return responseJson({ success: true, message: "สมัครสมาชิกสำเร็จ! กรุณารอผู้ดูแลระบบ (Admin) อนุมัติการใช้งาน" });
     }
 
     if (action === "loginUser") {
@@ -485,14 +486,14 @@ function doPost(e) {
       if (!sheet) {
         // If Users sheet doesn't exist, create it and register an Admin user as a fallback
         sheet = ss.insertSheet("Users");
-        sheet.appendRow(["Email", "Name", "PasswordHash", "Role", "CreatedAt", "LastLogin"]);
+        sheet.appendRow(["Email", "Name", "PasswordHash", "Role", "CreatedAt", "LastLogin", "Status"]);
         sheet.setFrozenRows(1);
         
         // Pre-populate admin account
         const adminEmail = "admin@admin.com";
         const adminName = "System Administrator";
         const adminHash = hashPassword("admin123");
-        sheet.appendRow([adminEmail, adminName, adminHash, "Admin", new Date().toISOString(), ""]);
+        sheet.appendRow([adminEmail, adminName, adminHash, "Admin", new Date().toISOString(), "", "Approved"]);
       }
       
       const email = String(postData.email || "").trim().toLowerCase();
@@ -512,7 +513,8 @@ function doPost(e) {
             email: data[i][0],
             name: data[i][1],
             passwordHash: data[i][2],
-            role: data[i][3] || "User"
+            role: data[i][3] || "User",
+            status: data[i][6] || "Approved" // Default to Approved for older data
           };
           userRowIndex = i + 1; // 1-indexed
           break;
@@ -523,19 +525,24 @@ function doPost(e) {
         const adminEmail = "admin@admin.com";
         const adminName = "System Administrator";
         const adminHash = hashPassword("admin123");
-        sheet.appendRow([adminEmail, adminName, adminHash, "Admin", new Date().toISOString(), ""]);
+        sheet.appendRow([adminEmail, adminName, adminHash, "Admin", new Date().toISOString(), "", "Approved"]);
         
         foundUser = {
           email: adminEmail,
           name: adminName,
           passwordHash: adminHash,
-          role: "Admin"
+          role: "Admin",
+          status: "Approved"
         };
         userRowIndex = sheet.getLastRow();
       }
       
       if (!foundUser) {
         return responseJson({ success: false, error: "ไม่พบบัญชีผู้ใช้งานนี้" });
+      }
+      
+      if (foundUser.status !== "Approved") {
+        return responseJson({ success: false, error: "บัญชีของคุณกำลังรอการอนุมัติสิทธิ์การใช้งานจาก Admin" });
       }
       
       const passwordHash = hashPassword(password);
@@ -555,6 +562,122 @@ function doPost(e) {
           role: foundUser.role
         }
       });
+    }
+
+    if (action === "getUsers") {
+      const requesterEmail = String(postData.requesterEmail || "").trim().toLowerCase();
+      let userSheet = ss.getSheetByName("Users");
+      if (!userSheet) return responseJson({ success: false, error: "Users sheet not found" });
+      
+      const usersData = userSheet.getDataRange().getValues();
+      let isRequesterAdmin = false;
+      for (let i = 1; i < usersData.length; i++) {
+        if (String(usersData[i][0]).toLowerCase() === requesterEmail && usersData[i][3] === "Admin") {
+          isRequesterAdmin = true;
+          break;
+        }
+      }
+      
+      if (!isRequesterAdmin) {
+        return responseJson({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (ต้องเป็น Admin เท่านั้น)" });
+      }
+      
+      const list = [];
+      for (let i = 1; i < usersData.length; i++) {
+        list.push({
+          email: usersData[i][0],
+          name: usersData[i][1],
+          role: usersData[i][3] || "User",
+          createdAt: usersData[i][4],
+          lastLogin: usersData[i][5],
+          status: usersData[i][6] || "Approved"
+        });
+      }
+      return responseJson({ success: true, users: list });
+    }
+
+    if (action === "updateUserStatus") {
+      const requesterEmail = String(postData.requesterEmail || "").trim().toLowerCase();
+      const targetEmail = String(postData.targetEmail || "").trim().toLowerCase();
+      const newStatus = String(postData.status || "");
+      const newRole = String(postData.role || "");
+      
+      let userSheet = ss.getSheetByName("Users");
+      if (!userSheet) return responseJson({ success: false, error: "Users sheet not found" });
+      
+      const usersData = userSheet.getDataRange().getValues();
+      let isRequesterAdmin = false;
+      for (let i = 1; i < usersData.length; i++) {
+        if (String(usersData[i][0]).toLowerCase() === requesterEmail && usersData[i][3] === "Admin") {
+          isRequesterAdmin = true;
+          break;
+        }
+      }
+      
+      if (!isRequesterAdmin) {
+        return responseJson({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (ต้องเป็น Admin เท่านั้น)" });
+      }
+      
+      let targetRowIndex = -1;
+      for (let i = 1; i < usersData.length; i++) {
+        if (String(usersData[i][0]).toLowerCase() === targetEmail) {
+          targetRowIndex = i + 1;
+          break;
+        }
+      }
+      
+      if (targetRowIndex === -1) {
+        return responseJson({ success: false, error: "ไม่พบผู้ใช้ที่ต้องการอัปเดต" });
+      }
+      
+      if (newStatus) {
+        userSheet.getRange(targetRowIndex, 7).setValue(newStatus);
+      }
+      if (newRole) {
+        userSheet.getRange(targetRowIndex, 4).setValue(newRole);
+      }
+      
+      return responseJson({ success: true, message: "อัปเดตข้อมูลผู้ใช้งานเรียบร้อยแล้ว!" });
+    }
+
+    if (action === "deleteUser") {
+      const requesterEmail = String(postData.requesterEmail || "").trim().toLowerCase();
+      const targetEmail = String(postData.targetEmail || "").trim().toLowerCase();
+      
+      if (requesterEmail === targetEmail) {
+        return responseJson({ success: false, error: "คุณไม่สามารถลบบัญชีของตัวเองได้" });
+      }
+      
+      let userSheet = ss.getSheetByName("Users");
+      if (!userSheet) return responseJson({ success: false, error: "Users sheet not found" });
+      
+      const usersData = userSheet.getDataRange().getValues();
+      let isRequesterAdmin = false;
+      for (let i = 1; i < usersData.length; i++) {
+        if (String(usersData[i][0]).toLowerCase() === requesterEmail && usersData[i][3] === "Admin") {
+          isRequesterAdmin = true;
+          break;
+        }
+      }
+      
+      if (!isRequesterAdmin) {
+        return responseJson({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (ต้องเป็น Admin เท่านั้น)" });
+      }
+      
+      let targetRowIndex = -1;
+      for (let i = 1; i < usersData.length; i++) {
+        if (String(usersData[i][0]).toLowerCase() === targetEmail) {
+          targetRowIndex = i + 1;
+          break;
+        }
+      }
+      
+      if (targetRowIndex === -1) {
+        return responseJson({ success: false, error: "ไม่พบผู้ใช้งานนี้" });
+      }
+      
+      userSheet.deleteRow(targetRowIndex);
+      return responseJson({ success: true, message: "ลบผู้ใช้เรียบร้อยแล้ว!" });
     }
     
     return responseJson({ success: false, error: "Unknown action" });

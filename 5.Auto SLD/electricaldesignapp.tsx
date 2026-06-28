@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, Minus, Edit3, Settings2, Zap, Trash2, Layout, MousePointer2, Info, Cpu, Database, ChevronRight, ChevronLeft, X, Calculator, Server, FileText, Edit, Image as ImageIcon, Upload, Download, Share2, AlertTriangle, Menu, Save, FolderOpen, Camera, FileSpreadsheet, Wand2, ArrowUp, ArrowDown, ZoomIn, ZoomOut, Move, Columns, ClipboardList, Check, Globe, Cloud, DownloadCloud, UploadCloud, RefreshCw, Copy, History, Layers, ExternalLink, Lock, ShieldAlert } from 'lucide-react';
+import { Plus, Minus, Edit3, Settings2, Zap, Trash2, Layout, MousePointer2, Info, Cpu, Database, ChevronRight, ChevronLeft, X, Calculator, Server, FileText, Edit, Image as ImageIcon, Upload, Download, Share2, AlertTriangle, Menu, Save, FolderOpen, Camera, FileSpreadsheet, Wand2, ArrowUp, ArrowDown, ZoomIn, ZoomOut, Move, Columns, ClipboardList, Check, Globe, Cloud, DownloadCloud, UploadCloud, RefreshCw, Copy, History, Layers, ExternalLink, Lock, ShieldAlert, Users } from 'lucide-react';
 
 const breakerOptions = [16, 20, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 320, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3200, 4000, 5000, 6300];
 const sizeOptions = ['2.5', '4', '6', '10', '16', '25', '35', '50', '70', '95', '120', '150', '185', '240', '300', '400', '500'];
@@ -860,6 +860,9 @@ const App = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
+  const [usersList, setUsersList] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
   if (typeof window !== 'undefined') {
     window.currentUserRole = currentUser ? currentUser.role : null;
   }
@@ -917,6 +920,86 @@ const App = () => {
       }
     } catch (e) {
       return { success: false, error: `ข้อผิดพลาดการเชื่อมต่อ: ${e.message}` };
+    }
+  };
+
+  const handleFetchUsers = async () => {
+    if (!currentUser) return;
+    setIsLoadingUsers(true);
+    try {
+      const scriptUrl = DEFAULT_APPS_SCRIPT_URL;
+      const res = await fetch(scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'getUsers',
+          requesterEmail: currentUser.email
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUsersList(data.users || []);
+        logSync('โหลดรายชื่อผู้ใช้เสร็จสมบูรณ์');
+      } else {
+        alert(`โหลดข้อมูลผู้ใช้ไม่สำเร็จ: ${data.error}`);
+      }
+    } catch (e) {
+      alert(`ข้อผิดพลาดการเชื่อมต่อ: ${e.message}`);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  const handleUpdateUserStatus = async (targetEmail, status, role) => {
+    if (!currentUser) return;
+    try {
+      const scriptUrl = DEFAULT_APPS_SCRIPT_URL;
+      const res = await fetch(scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'updateUserStatus',
+          requesterEmail: currentUser.email,
+          targetEmail,
+          status,
+          role
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        logSync(`อัปเดตสิทธิ์ผู้ใช้ ${targetEmail} สำเร็จ`);
+        handleFetchUsers();
+      } else {
+        alert(`อัปเดตสิทธิ์ไม่สำเร็จ: ${data.error}`);
+      }
+    } catch (e) {
+      alert(`ข้อผิดพลาดการเชื่อมต่อ: ${e.message}`);
+    }
+  };
+
+  const handleDeleteUser = async (targetEmail) => {
+    if (!currentUser) return;
+    if (!window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบผู้ใช้งาน ${targetEmail}?`)) return;
+    try {
+      const scriptUrl = DEFAULT_APPS_SCRIPT_URL;
+      const res = await fetch(scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'deleteUser',
+          requesterEmail: currentUser.email,
+          targetEmail
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        logSync(`ลบผู้ใช้ ${targetEmail} สำเร็จ`);
+        handleFetchUsers();
+      } else {
+        alert(`ลบผู้ใช้ไม่สำเร็จ: ${data.error}`);
+      }
+    } catch (e) {
+      alert(`ข้อผิดพลาดการเชื่อมต่อ: ${e.message}`);
     }
   };
 
@@ -1171,6 +1254,12 @@ const App = () => {
       handlePullDatabase(sheetUrl, appsScriptUrl);
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    if (activeTab === 'users' && currentUser && currentUser.role === 'Admin') {
+      handleFetchUsers();
+    }
+  }, [activeTab]);
 
 
   // --- File Management & Export Methods ---
@@ -2164,10 +2253,13 @@ const App = () => {
           </div>
 
           <div className="flex bg-[#1e293b] border-b border-[#334155] flex-shrink-0 shadow-sm relative z-10 flex-wrap">
-            <button onClick={() => setActiveTab('global')} className={`flex-1 min-w-[25%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 ${activeTab === 'global' ? 'text-cyan-400 border-cyan-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}>Global</button>
-            <button onClick={() => setActiveTab('feeders')} className={`flex-1 min-w-[25%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'feeders' ? 'text-cyan-400 border-cyan-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}>Feeders <span className="bg-slate-700 text-white text-[9px] px-1.5 py-0.5 rounded-full">{feeders.length}</span></button>
-            <button onClick={() => setActiveTab('raceways')} className={`flex-1 min-w-[25%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'raceways' ? 'text-amber-400 border-amber-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}><Columns className="w-3.5 h-3.5"/> Raceways</button>
-            <button onClick={() => setActiveTab('database')} className={`flex-1 min-w-[25%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 ${activeTab === 'database' ? 'text-purple-400 border-purple-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}>DB</button>
+            <button onClick={() => setActiveTab('global')} className={`flex-1 min-w-[20%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 ${activeTab === 'global' ? 'text-cyan-400 border-cyan-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}>Global</button>
+            <button onClick={() => setActiveTab('feeders')} className={`flex-1 min-w-[20%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'feeders' ? 'text-cyan-400 border-cyan-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}>Feeders <span className="bg-slate-700 text-white text-[9px] px-1.5 py-0.5 rounded-full">{feeders.length}</span></button>
+            <button onClick={() => setActiveTab('raceways')} className={`flex-1 min-w-[20%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'raceways' ? 'text-amber-400 border-amber-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}><Columns className="w-3.5 h-3.5"/> Raceways</button>
+            <button onClick={() => setActiveTab('database')} className={`flex-1 min-w-[20%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 ${activeTab === 'database' ? 'text-purple-400 border-purple-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}>DB</button>
+            {currentUser && currentUser.role === 'Admin' && (
+              <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[20%] py-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1 ${activeTab === 'users' ? 'text-rose-400 border-rose-400 bg-[#2d3748]' : 'text-slate-400 border-transparent hover:bg-[#2d3748]/50'}`}><Users className="w-3.5 h-3.5" /> Users</button>
+            )}
           </div>
 
           <div className="p-4 space-y-6 overflow-y-auto flex-1 bg-[#1e293b] custom-scrollbar">
@@ -2483,6 +2575,96 @@ const App = () => {
               </div>
             )}
 
+
+            {activeTab === 'users' && currentUser && currentUser.role === 'Admin' && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-right duration-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-[11px] font-black text-slate-500 tracking-widest uppercase flex items-center gap-2">
+                    <Users className="w-3.5 h-3.5 text-rose-400"/> User Management ({usersList.length})
+                  </h3>
+                  <button 
+                    onClick={handleFetchUsers} 
+                    disabled={isLoadingUsers} 
+                    className="p-1.5 bg-[#2d3748] hover:bg-slate-700 text-slate-300 rounded-lg transition-all"
+                    title="Reload users list"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingUsers ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+
+                {isLoadingUsers ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-slate-500 gap-2">
+                    <RefreshCw className="w-6 h-6 animate-spin text-cyan-400" />
+                    <span className="text-xs">กำลังโหลดรายชื่อผู้ใช้...</span>
+                  </div>
+                ) : usersList.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500 text-xs">
+                    ไม่พบรายชื่อผู้ใช้งานในระบบ
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {usersList.map((user: any) => {
+                      const isSelf = user.email.toLowerCase() === currentUser.email.toLowerCase();
+                      return (
+                        <div key={user.email} className="bg-[#2d3748] rounded-xl p-3.5 border border-[#334155] shadow-md space-y-3">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                                {user.name} 
+                                {isSelf && <span className="bg-slate-600 text-[9px] text-slate-300 px-1 py-0.2 rounded font-normal">คุณ</span>}
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-mono mt-0.5">{user.email}</div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                user.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              }`}>
+                                {user.status === 'Approved' ? 'Approved' : 'Pending Approval'}
+                              </span>
+                              <span className="text-[9px] text-slate-500 font-mono">
+                                Role: <span className="font-bold text-slate-300">{user.role}</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 pt-2 border-t border-[#334155]/60 flex-wrap">
+                            {user.status === 'Pending' && (
+                              <button 
+                                onClick={() => handleUpdateUserStatus(user.email, 'Approved', '')}
+                                className="flex-1 min-w-[70px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] py-1.5 rounded-lg shadow transition-all flex items-center justify-center gap-1"
+                              >
+                                <Check className="w-3 h-3" /> Approve
+                              </button>
+                            )}
+                            
+                            {!isSelf && (
+                              <>
+                                <select 
+                                  value={user.role} 
+                                  onChange={(e) => handleUpdateUserStatus(user.email, '', e.target.value)}
+                                  className="bg-[#1a202c] text-slate-300 text-[10px] font-bold rounded-lg px-2 py-1 border border-[#334155] focus:outline-none focus:border-cyan-500 transition-all cursor-pointer h-[28px]"
+                                >
+                                  <option value="Admin">Admin</option>
+                                  <option value="User">User</option>
+                                  <option value="Viewer">Viewer</option>
+                                </select>
+
+                                <button 
+                                  onClick={() => handleDeleteUser(user.email)}
+                                  className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-[10px] px-2.5 py-1.5 rounded-lg border border-red-500/20 transition-all flex items-center gap-1 h-[28px] ml-auto"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
           </div>
         </div>
