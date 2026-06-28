@@ -57,9 +57,9 @@ const baseCableSizesData = [
 const initialCableDatabase = {
   'CV(XLPE)-0.6/1kV': JSON.parse(JSON.stringify(baseCableSizesData)),
   'CV(XLPE)-FD(FRC)-0.6/1kV': JSON.parse(JSON.stringify(baseCableSizesData)),
-  'CV(XLPE)-6/10(12kV)': JSON.parse(JSON.stringify(baseCableSizesData)),
-  'CV(XLPE)-12/20(24kV)': JSON.parse(JSON.stringify(baseCableSizesData)),
-  'CV(XLPE)-18/30(36kV)': JSON.parse(JSON.stringify(baseCableSizesData)),
+  'CV(XLPE)-6/10(12kV)': [],
+  'CV(XLPE)-12/20(24kV)': [],
+  'CV(XLPE)-18/30(36kV)': [],
 };
 
 const baseAmpacityData = {
@@ -90,9 +90,9 @@ const baseAmpacityData = {
 const initialAmpacityDatabase = {
   'CV(XLPE)-0.6/1kV': JSON.parse(JSON.stringify(baseAmpacityData)),
   'CV(XLPE)-FD(FRC)-0.6/1kV': JSON.parse(JSON.stringify(baseAmpacityData)),
-  'CV(XLPE)-6/10(12kV)': JSON.parse(JSON.stringify(baseAmpacityData)),
-  'CV(XLPE)-12/20(24kV)': JSON.parse(JSON.stringify(baseAmpacityData)),
-  'CV(XLPE)-18/30(36kV)': JSON.parse(JSON.stringify(baseAmpacityData)),
+  'CV(XLPE)-6/10(12kV)': {},
+  'CV(XLPE)-12/20(24kV)': {},
+  'CV(XLPE)-18/30(36kV)': {},
 };
 
 // --- Helper Functions ---
@@ -540,11 +540,56 @@ const IECBreaker = ({ x, y, title, ataf, fieldId, tab = "global", focusInput }) 
 );
 
 const App = () => {
-  const [cableDB, setCableDB] = useState(initialCableDatabase);
-  const [ampacityDB, setAmpacityDB] = useState(initialAmpacityDatabase);
-  const [cableOD, setCableOD] = useState(initialCableODData); 
-  const [conduitSizes, setConduitSizes] = useState([...initialConduitSizes]);
-  const [traySizes, setTraySizes] = useState([...initialTraySizes]);
+  // Database migration to clear old cached DB values in browser
+  if (typeof window !== 'undefined' && localStorage.getItem('auto_sld_db_version') !== 'v2') {
+    localStorage.removeItem('auto_sld_cable_db');
+    localStorage.removeItem('auto_sld_ampacity_db');
+    localStorage.removeItem('auto_sld_cable_od');
+    localStorage.removeItem('auto_sld_conduit_sizes');
+    localStorage.removeItem('auto_sld_tray_sizes');
+    localStorage.setItem('auto_sld_db_version', 'v2');
+  }
+
+  const [cableDB, setCableDB] = useState(() => {
+    const saved = localStorage.getItem('auto_sld_cable_db');
+    return saved ? JSON.parse(saved) : initialCableDatabase;
+  });
+  const [ampacityDB, setAmpacityDB] = useState(() => {
+    const saved = localStorage.getItem('auto_sld_ampacity_db');
+    return saved ? JSON.parse(saved) : initialAmpacityDatabase;
+  });
+  const [cableOD, setCableOD] = useState(() => {
+    const saved = localStorage.getItem('auto_sld_cable_od');
+    return saved ? JSON.parse(saved) : initialCableODData;
+  });
+  const [conduitSizes, setConduitSizes] = useState(() => {
+    const saved = localStorage.getItem('auto_sld_conduit_sizes');
+    return saved ? JSON.parse(saved) : [...initialConduitSizes];
+  });
+  const [traySizes, setTraySizes] = useState(() => {
+    const saved = localStorage.getItem('auto_sld_tray_sizes');
+    return saved ? JSON.parse(saved) : [...initialTraySizes];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('auto_sld_cable_db', JSON.stringify(cableDB));
+  }, [cableDB]);
+
+  useEffect(() => {
+    localStorage.setItem('auto_sld_ampacity_db', JSON.stringify(ampacityDB));
+  }, [ampacityDB]);
+
+  useEffect(() => {
+    localStorage.setItem('auto_sld_cable_od', JSON.stringify(cableOD));
+  }, [cableOD]);
+
+  useEffect(() => {
+    localStorage.setItem('auto_sld_conduit_sizes', JSON.stringify(conduitSizes));
+  }, [conduitSizes]);
+
+  useEffect(() => {
+    localStorage.setItem('auto_sld_tray_sizes', JSON.stringify(traySizes));
+  }, [traySizes]);
   const [racewayGroups, setRacewayGroups] = useState([
     { id: 1, startNum: 1, endNum: 4 },
     { id: 2, startNum: 5, endNum: 7 }
@@ -1246,11 +1291,6 @@ const App = () => {
     }
   };
 
-  useEffect(() => {
-    if (currentUser && (sheetUrl || appsScriptUrl)) {
-      handlePullDatabase(sheetUrl, appsScriptUrl);
-    }
-  }, [currentUser]);
 
   useEffect(() => {
     if (activeTab === 'users' && currentUser && currentUser.role === 'Admin') {
@@ -2502,73 +2542,6 @@ const App = () => {
                    </button>
                 ))}
 
-                {/* Google Sheet Database Sync Setup - Admin Only */}
-                {currentUser.role === 'Admin' && (
-                  <div className="mt-6 border-t border-[#334155] pt-5 space-y-4">
-                    <h3 className="text-[11px] font-black text-slate-500 tracking-widest px-2 uppercase flex items-center gap-2">
-                      <Cloud className="w-3.5 h-3.5 text-cyan-400" /> Google Sheets Sync
-                    </h3>
-                    
-                    <div className="bg-[#1a202c]/50 rounded-xl p-3 border border-[#334155]/60 space-y-3 shadow-inner">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 block">Google Sheet URL</label>
-                        <input 
-                          type="text" 
-                          placeholder="https://docs.google.com/spreadsheets/d/.../edit" 
-                          value={sheetUrl}
-                          onChange={(e) => setSheetUrl(e.target.value)}
-                          className="w-full bg-[#0f172a] text-slate-200 text-[11px] rounded-lg px-2.5 py-1.5 border border-[#334155] focus:outline-none focus:border-cyan-500 transition-colors font-sarabun"
-                        />
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 block">Apps Script URL (for Push/Write)</label>
-                        <input 
-                          type="text" 
-                          placeholder="https://script.google.com/macros/s/.../exec" 
-                          value={appsScriptUrl}
-                          onChange={(e) => setAppsScriptUrl(e.target.value)}
-                          className="w-full bg-[#0f172a] text-slate-200 text-[11px] rounded-lg px-2.5 py-1.5 border border-[#334155] focus:outline-none focus:border-cyan-500 transition-colors font-sarabun"
-                        />
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => handlePullDatabase(sheetUrl, appsScriptUrl)}
-                          disabled={isPulling}
-                          className="flex-1 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white font-bold text-[10px] py-2 rounded-lg shadow transition-all flex items-center justify-center gap-1"
-                        >
-                          <DownloadCloud className="w-3.5 h-3.5" /> {isPulling ? 'Pulling...' : 'Pull DB'}
-                        </button>
-                        <button 
-                          onClick={handlePushDatabase}
-                          disabled={isPushing}
-                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold text-[10px] py-2 rounded-lg shadow transition-all flex items-center justify-center gap-1"
-                        >
-                          <UploadCloud className="w-3.5 h-3.5" /> {isPushing ? 'Pushing...' : 'Push DB'}
-                        </button>
-                      </div>
-
-                      {/* Status & Logs */}
-                      <div className="border-t border-[#334155] pt-2.5 mt-1 space-y-1.5">
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-slate-400">Connection Status:</span>
-                          <span className={`font-bold ${sheetStatus === 'connected' ? 'text-emerald-400' : sheetStatus === 'syncing' ? 'text-cyan-400' : sheetStatus === 'error' ? 'text-red-400' : 'text-slate-500'}`}>
-                            {sheetStatus === 'connected' ? 'CONNECTED' : sheetStatus === 'syncing' ? 'SYNCING' : sheetStatus === 'error' ? 'ERROR' : 'DISCONNECTED'}
-                          </span>
-                        </div>
-                        
-                        {syncLogs.length > 0 && (
-                          <div className="bg-[#0f172a] rounded p-2 text-[9px] font-mono text-cyan-400 max-h-[80px] overflow-y-auto custom-scrollbar leading-relaxed">
-                            {syncLogs.map((log, idx) => (
-                              <div key={idx}>{log}</div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
