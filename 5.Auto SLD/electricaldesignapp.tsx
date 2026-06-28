@@ -487,12 +487,6 @@ const AuthWall = ({ handleLoginUser, handleRegisterUser }) => {
           </button>
         </form>
 
-        <div className="mt-6 border-t border-slate-800/80 pt-4 text-center">
-          <p className="text-[10px] text-slate-500 leading-relaxed">
-            ระบบซิงค์ฐานข้อมูลอัตโนมัติ<br/>
-            ระบบจะสร้างผู้ดูแลระบบ <span className="text-cyan-600 font-bold">admin@admin.com</span> (รหัสผ่าน: <span className="text-cyan-600 font-bold">admin123</span>) เป็นค่าเริ่มต้นหากติดตั้งชีทใหม่
-          </p>
-        </div>
       </div>
     </div>
   );
