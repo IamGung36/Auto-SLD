@@ -533,56 +533,100 @@ const IECBreaker = ({ x, y, title, ataf, fieldId, tab = "global", focusInput }) 
   </g>
 );
 
+const safeLocalStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return typeof window !== 'undefined' && window.localStorage ? window.localStorage.getItem(key) : null;
+    } catch (e) {
+      return null;
+    }
+  },
+  setItem: (key: string, val: string): void => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, val);
+      }
+    } catch (e) {}
+  },
+  removeItem: (key: string): void => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(key);
+      }
+    } catch (e) {}
+  }
+};
+
 const App = () => {
   // Database migration to clear old cached DB values in browser
-  if (typeof window !== 'undefined' && localStorage.getItem('auto_sld_db_version') !== 'v2') {
-    localStorage.removeItem('auto_sld_cable_db');
-    localStorage.removeItem('auto_sld_ampacity_db');
-    localStorage.removeItem('auto_sld_cable_od');
-    localStorage.removeItem('auto_sld_conduit_sizes');
-    localStorage.removeItem('auto_sld_tray_sizes');
-    localStorage.setItem('auto_sld_db_version', 'v2');
+  if (typeof window !== 'undefined' && safeLocalStorage.getItem('auto_sld_db_version') !== 'v2') {
+    safeLocalStorage.removeItem('auto_sld_cable_db');
+    safeLocalStorage.removeItem('auto_sld_ampacity_db');
+    safeLocalStorage.removeItem('auto_sld_cable_od');
+    safeLocalStorage.removeItem('auto_sld_conduit_sizes');
+    safeLocalStorage.removeItem('auto_sld_tray_sizes');
+    safeLocalStorage.setItem('auto_sld_db_version', 'v2');
   }
 
   const [cableDB, setCableDB] = useState(() => {
-    const saved = localStorage.getItem('auto_sld_cable_db');
-    return saved ? JSON.parse(saved) : initialCableDatabase;
+    try {
+      const saved = safeLocalStorage.getItem('auto_sld_cable_db');
+      return saved ? JSON.parse(saved) : initialCableDatabase;
+    } catch (e) {
+      return initialCableDatabase;
+    }
   });
   const [ampacityDB, setAmpacityDB] = useState(() => {
-    const saved = localStorage.getItem('auto_sld_ampacity_db');
-    return saved ? JSON.parse(saved) : initialAmpacityDatabase;
+    try {
+      const saved = safeLocalStorage.getItem('auto_sld_ampacity_db');
+      return saved ? JSON.parse(saved) : initialAmpacityDatabase;
+    } catch (e) {
+      return initialAmpacityDatabase;
+    }
   });
   const [cableOD, setCableOD] = useState(() => {
-    const saved = localStorage.getItem('auto_sld_cable_od');
-    return saved ? JSON.parse(saved) : initialCableODData;
+    try {
+      const saved = safeLocalStorage.getItem('auto_sld_cable_od');
+      return saved ? JSON.parse(saved) : initialCableODData;
+    } catch (e) {
+      return initialCableODData;
+    }
   });
   const [conduitSizes, setConduitSizes] = useState(() => {
-    const saved = localStorage.getItem('auto_sld_conduit_sizes');
-    return saved ? JSON.parse(saved) : [...initialConduitSizes];
+    try {
+      const saved = safeLocalStorage.getItem('auto_sld_conduit_sizes');
+      return saved ? JSON.parse(saved) : [...initialConduitSizes];
+    } catch (e) {
+      return [...initialConduitSizes];
+    }
   });
   const [traySizes, setTraySizes] = useState(() => {
-    const saved = localStorage.getItem('auto_sld_tray_sizes');
-    return saved ? JSON.parse(saved) : [...initialTraySizes];
+    try {
+      const saved = safeLocalStorage.getItem('auto_sld_tray_sizes');
+      return saved ? JSON.parse(saved) : [...initialTraySizes];
+    } catch (e) {
+      return [...initialTraySizes];
+    }
   });
 
   useEffect(() => {
-    localStorage.setItem('auto_sld_cable_db', JSON.stringify(cableDB));
+    safeLocalStorage.setItem('auto_sld_cable_db', JSON.stringify(cableDB));
   }, [cableDB]);
 
   useEffect(() => {
-    localStorage.setItem('auto_sld_ampacity_db', JSON.stringify(ampacityDB));
+    safeLocalStorage.setItem('auto_sld_ampacity_db', JSON.stringify(ampacityDB));
   }, [ampacityDB]);
 
   useEffect(() => {
-    localStorage.setItem('auto_sld_cable_od', JSON.stringify(cableOD));
+    safeLocalStorage.setItem('auto_sld_cable_od', JSON.stringify(cableOD));
   }, [cableOD]);
 
   useEffect(() => {
-    localStorage.setItem('auto_sld_conduit_sizes', JSON.stringify(conduitSizes));
+    safeLocalStorage.setItem('auto_sld_conduit_sizes', JSON.stringify(conduitSizes));
   }, [conduitSizes]);
 
   useEffect(() => {
-    localStorage.setItem('auto_sld_tray_sizes', JSON.stringify(traySizes));
+    safeLocalStorage.setItem('auto_sld_tray_sizes', JSON.stringify(traySizes));
   }, [traySizes]);
   const [racewayGroups, setRacewayGroups] = useState([
     { id: 1, startNum: 1, endNum: 4 },
@@ -886,7 +930,7 @@ const App = () => {
   const [dbCoreType, setDbCoreType] = useState('1C');
   const [isDbEditMode, setIsDbEditMode] = useState(false);
 
-  const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem('auto_sld_sheet_url') || '');
+  const [sheetUrl, setSheetUrl] = useState(() => safeLocalStorage.getItem('auto_sld_sheet_url') || '');
   const [appsScriptUrl, setAppsScriptUrl] = useState(DEFAULT_APPS_SCRIPT_URL);
   const [isPulling, setIsPulling] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
@@ -895,8 +939,12 @@ const App = () => {
   const [syncLogs, setSyncLogs] = useState<string[]>([]);
 
   const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('auto_sld_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = safeLocalStorage.getItem('auto_sld_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
   });
 
   const [usersList, setUsersList] = useState([]);
@@ -926,7 +974,7 @@ const App = () => {
       const data = await res.json();
       if (data.success && data.user) {
         setCurrentUser(data.user);
-        localStorage.setItem('auto_sld_user', JSON.stringify(data.user));
+        safeLocalStorage.setItem('auto_sld_user', JSON.stringify(data.user));
         logSync(`User logged in: ${data.user.name} (${data.user.role})`);
         return { success: true };
       } else {
@@ -1044,7 +1092,7 @@ const App = () => {
 
   const handleLogoutUser = () => {
     setCurrentUser(null);
-    localStorage.removeItem('auto_sld_user');
+    safeLocalStorage.removeItem('auto_sld_user');
     logSync('ออกจากระบบแล้ว');
   };
 
@@ -1083,8 +1131,8 @@ const App = () => {
     setSheetError('');
     logSync('เริ่มต้นซิงค์ข้อมูล...');
     
-    localStorage.setItem('auto_sld_sheet_url', customSheetUrl || '');
-    localStorage.setItem('auto_sld_apps_script_url', customScriptUrl || '');
+    safeLocalStorage.setItem('auto_sld_sheet_url', customSheetUrl || '');
+    safeLocalStorage.setItem('auto_sld_apps_script_url', customScriptUrl || '');
     
     try {
       if (customScriptUrl && customScriptUrl.trim() !== '') {
