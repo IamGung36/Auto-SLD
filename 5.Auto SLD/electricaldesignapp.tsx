@@ -571,7 +571,9 @@ const App = () => {
   const [cableDB, setCableDB] = useState(() => {
     try {
       const saved = safeLocalStorage.getItem('auto_sld_cable_db');
-      return saved ? JSON.parse(saved) : initialCableDatabase;
+      if (!saved) return initialCableDatabase;
+      const parsed = JSON.parse(saved);
+      return (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) ? parsed : initialCableDatabase;
     } catch (e) {
       return initialCableDatabase;
     }
@@ -579,7 +581,9 @@ const App = () => {
   const [ampacityDB, setAmpacityDB] = useState(() => {
     try {
       const saved = safeLocalStorage.getItem('auto_sld_ampacity_db');
-      return saved ? JSON.parse(saved) : initialAmpacityDatabase;
+      if (!saved) return initialAmpacityDatabase;
+      const parsed = JSON.parse(saved);
+      return (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) ? parsed : initialAmpacityDatabase;
     } catch (e) {
       return initialAmpacityDatabase;
     }
@@ -587,7 +591,9 @@ const App = () => {
   const [cableOD, setCableOD] = useState(() => {
     try {
       const saved = safeLocalStorage.getItem('auto_sld_cable_od');
-      return saved ? JSON.parse(saved) : initialCableODData;
+      if (!saved) return initialCableODData;
+      const parsed = JSON.parse(saved);
+      return (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) ? parsed : initialCableODData;
     } catch (e) {
       return initialCableODData;
     }
@@ -595,7 +601,9 @@ const App = () => {
   const [conduitSizes, setConduitSizes] = useState(() => {
     try {
       const saved = safeLocalStorage.getItem('auto_sld_conduit_sizes');
-      return saved ? JSON.parse(saved) : [...initialConduitSizes];
+      if (!saved) return [...initialConduitSizes];
+      const parsed = JSON.parse(saved);
+      return (parsed && Array.isArray(parsed) && parsed.length > 0) ? parsed : [...initialConduitSizes];
     } catch (e) {
       return [...initialConduitSizes];
     }
@@ -603,7 +611,9 @@ const App = () => {
   const [traySizes, setTraySizes] = useState(() => {
     try {
       const saved = safeLocalStorage.getItem('auto_sld_tray_sizes');
-      return saved ? JSON.parse(saved) : [...initialTraySizes];
+      if (!saved) return [...initialTraySizes];
+      const parsed = JSON.parse(saved);
+      return (parsed && Array.isArray(parsed) && parsed.length > 0) ? parsed : [...initialTraySizes];
     } catch (e) {
       return [...initialTraySizes];
     }
@@ -941,7 +951,9 @@ const App = () => {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = safeLocalStorage.getItem('auto_sld_user');
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      return (parsed && typeof parsed === 'object') ? parsed : null;
     } catch (e) {
       return null;
     }
