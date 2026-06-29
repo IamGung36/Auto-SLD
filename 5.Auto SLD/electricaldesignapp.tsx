@@ -704,6 +704,11 @@ const App = () => {
    });
 
    const [systemType, setSystemType] = useState('3P 4W Full N'); 
+   const initialCal = {
+     circType: 'Feeder', factor: 1.25, at: 250, adjust: 1.0, af: 250,
+     install: "A: Ladder Closed", ref: "T5-33", cores: "1C", size: "120",
+     ampCable: 284, ca: 1, cg: 1, set: 1, dist: 50, vd: 1.22, ground: "25", racewayOverride: ""
+   };
    const [maxVd, setMaxVd] = useState(2.5);
    const [globalPf, setGlobalPf] = useState(1.0);
    const [calVoltage, setCalVoltage] = useState(400);
@@ -717,12 +722,7 @@ const App = () => {
    const [dragFillStartIdx, setDragFillStartIdx] = useState(null);
    const [dragFillCurrentIdx, setDragFillCurrentIdx] = useState(null);
 
-   const initialCal = {
-     circType: 'Feeder', factor: 1.1, at: 250, adjust: 1.0, af: 250,
-     install: "A: Ladder Closed", ref: "T5-33", cores: "1C", size: "120",
-     ampCable: 284, ca: 1, cg: 1, set: 1, dist: 50, vd: 1.22, ground: "25", racewayOverride: ""
-   };
-
+   
     const [feeders, setFeeders] = useState([
       { id: 1, title: "Feeder 1", type: "MCCB 3P", ataf: "250 AT / 250 AF", cable1: "4x1C-120 sq.mm., CV", cable2: "1C-25 sq.mm.,(G)", install: "A: Ladder Closed", loadKw: "150", loadA: "216.51", loadTitle: "Inverter 1", cal: {...initialCal, circType: 'Feeder', at: 250, af: 250, ground: "25"} },
       { id: 2, title: "Feeder 2", type: "MCCB 3P", ataf: "250 AT / 250 AF", cable1: "4x1C-120 sq.mm., CV", cable2: "1C-25 sq.mm.,(G)", install: "A: Ladder Closed", loadKw: "150", loadA: "216.51", loadTitle: "Inverter 2", cal: {...initialCal, circType: 'Feeder', at: 250, af: 250, ampCable: 284, ground: "25"} },
