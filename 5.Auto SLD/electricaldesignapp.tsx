@@ -966,6 +966,8 @@ const App = () => {
     window.currentUserRole = currentUser ? currentUser.role : null;
   }
 
+  const isViewer = currentUser ? currentUser.role === 'Viewer' : false;
+
   const logSync = (msg: string) => {
     const timestamp = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setSyncLogs(prev => [`[${timestamp}] ${msg}`, ...prev].slice(0, 30));
