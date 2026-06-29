@@ -1509,6 +1509,7 @@ const App = () => {
                     <th>Phase Cable</th>
                     <th>Ground Cable</th>
                     <th>Raceway / Routing</th>
+                    <th>Dist(m)</th>
                     <th>%VD</th>
                 </tr>
                 <tr>
@@ -1517,6 +1518,7 @@ const App = () => {
                     <td>${globalSpecs.mainPhaseCable}</td>
                     <td>${globalSpecs.mainGroundCable}</td>
                     <td><strong>${mR.finalSize}</strong><br/><span class="text-sm">${globalSpecs.mainCal.install}</span></td>
+                    <td>${globalSpecs.mainCal.dist}</td>
                     <td>${mainVdStr}%</td>
                 </tr>
             </table>
@@ -1530,6 +1532,7 @@ const App = () => {
                     <th>Protection Device</th>
                     <th>Cable Conductor</th>
                     <th>Raceway</th>
+                    <th>Dist(m)</th>
                     <th>%VD</th>
                 </tr>`;
 
@@ -1546,6 +1549,7 @@ const App = () => {
                     <td>${f.type}<br/>${f.cal.at}AT / ${f.cal.af}AF<br/><span class="text-sm">(Trip: ${adjTrip.toFixed(0)}A)</span></td>
                     <td>${f.cable1}<br/><span style="color: #059669;">${f.cable2}</span></td>
                     <td><strong>${fR.finalSize}</strong><br/><span class="text-sm">${f.install}</span></td>
+                    <td>${f.cal.dist}</td>
                     <td>${vd}%</td>
                 </tr>`;
     });
